@@ -69,16 +69,21 @@ function thumbUrl(path: string) {
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
 
 function loadImg(url: string): Promise<HTMLImageElement> {
-  let p = imageCache.get(url);
+  // Proxy TMDB images para evitar CORS
+  const proxyUrl = url.startsWith("https://image.tmdb.org/")
+    ? `/api/logo-proxy?url=${encodeURIComponent(url)}`
+    : url;
+
+  let p = imageCache.get(proxyUrl);
   if (!p) {
     p = new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error(`No se pudo cargar ${url}`));
-      img.src = url;
+      img.src = proxyUrl;
     });
-    imageCache.set(url, p);
+    imageCache.set(proxyUrl, p);
   }
   return p;
 }
