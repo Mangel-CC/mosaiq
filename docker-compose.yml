@@ -1,0 +1,17 @@
+services:
+  mosaiq:
+    build: .
+    container_name: mosaiq
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Obligatoria: API key de TMDB (v3 o token v4)
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      # Opcional: si se define, todas las rutas /api/* exigen ?key=
+      ACCESS_KEY: ${ACCESS_KEY:-}
+    # Docker Compose lee las variables de un archivo .env junto al
+    # docker-compose.yml; también puedes descomentar esto para reutilizar
+    # el .env.local del proyecto:
+    # env_file:
+    #   - .env.local
