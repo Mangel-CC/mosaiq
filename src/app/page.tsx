@@ -67,6 +67,7 @@ function thumbUrl(path: string) {
 }
 
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+const canvasCache = new Map<string, string>(); // Almacena data URLs del canvas
 
 function loadImg(url: string): Promise<HTMLImageElement> {
   // Proxy para imágenes que necesitan CORS (TMDB, Kitsu, etc)
@@ -87,6 +88,17 @@ function loadImg(url: string): Promise<HTMLImageElement> {
     imageCache.set(proxyUrl, p);
   }
   return p;
+}
+
+function getCacheKey(
+  mode: "mosaic" | "cover",
+  paths: string[],
+  config: MosaicConfig | CoverConfig,
+  extra: Record<string, unknown>
+): string {
+  const sortedPaths = [...paths].sort().join("|");
+  const params = JSON.stringify({ config, extra });
+  return `${mode}:${sortedPaths}:${params}`;
 }
 
 export default function Editor() {
@@ -320,7 +332,6 @@ export default function Editor() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setIsRendering(true);
       const canvas = canvasRef.current;
       if (!canvas) return;
       const size = mode === "cover" ? coverCfg : config;
@@ -335,6 +346,32 @@ export default function Editor() {
         ctx.textAlign = "center";
         ctx.fillText(msg, size.width / 2, size.height / 2);
       };
+
+      // Generar clave de caché
+      const cacheKey = getCacheKey(
+        mode,
+        mode === "cover" ? [] : imagePaths,
+        mode === "cover" ? coverCfg : config,
+        mode === "cover"
+          ? { coverType, coverItem: coverItem?.id, logoUrl, noText }
+          : {}
+      );
+
+      // Verificar si está cacheado
+      const cached = canvasCache.get(cacheKey);
+      if (cached) {
+        const img = new Image();
+        img.onload = () => {
+          if (!cancelled) {
+            ctx.drawImage(img, 0, 0);
+            setIsRendering(false);
+          }
+        };
+        img.src = cached;
+        return;
+      }
+
+      setIsRendering(true);
 
       if (mode === "cover") {
         const art = noText ? textlessArt : null;
@@ -375,6 +412,15 @@ export default function Editor() {
         if (images.length === 0)
           drawEmptyMsg("Añade títulos desde el buscador para ver el mosaico");
       }
+
+      // Cachear el resultado
+      try {
+        const dataUrl = canvas.toDataURL("image/png", 0.8);
+        canvasCache.set(cacheKey, dataUrl);
+      } catch {
+        // Ignorar errores de cacheo
+      }
+
       if (!cancelled) setIsRendering(false);
     })();
     return () => {
