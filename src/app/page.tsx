@@ -525,7 +525,21 @@ export default function Editor() {
           ).map(([m, label]) => (
             <button
               key={m}
-              onClick={() => setMode(m)}
+              onClick={() => {
+                setMode(m);
+                if (m === "cover") {
+                  setCoverCfg(DEFAULT_COVER_CONFIG);
+                  setCoverType("backdrop");
+                  setCoverSource("top");
+                  setCoverPick(1);
+                  setSelectedCover(null);
+                  setLogoUrl("");
+                  setNoText(false);
+                } else {
+                  setConfig(DEFAULT_CONFIG);
+                  setPreset("netflix");
+                }
+              }}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 mode === m
                   ? "bg-violet-600 text-white"
