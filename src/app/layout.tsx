@@ -66,7 +66,6 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
     },
   },
-  icons: { icon: "/logo.svg" },
 };
 
 // Datos estructurados: ayudan a Google a mostrar la app con nombre, tipo y
