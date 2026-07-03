@@ -33,18 +33,16 @@ const COVER_RESOLUTIONS = [
   { label: "1000 × 1000 (cuadrada)", w: 1000, h: 1000 },
 ];
 
+// Fuentes disponibles en el servidor (compatibles con API)
 const TEXT_FONTS = [
   "sans-serif",
   "serif",
   "monospace",
-  "Arial",
-  "Arial Black",
-  "Impact",
-  "Georgia",
-  "Times New Roman",
-  "Courier New",
-  "Verdana",
-  "Trebuchet MS",
+  "DejaVu Sans",
+  "DejaVu Serif",
+  "Liberation Sans",
+  "Liberation Serif",
+  "Noto Sans",
 ];
 
 const RESOLUTIONS = [
