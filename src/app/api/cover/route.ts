@@ -25,6 +25,18 @@ async function fetchImage(url: string): Promise<Image> {
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
+
+  // Debug: return params if ?debug=1
+  if (params.get("debug") === "1") {
+    const cfg = coverConfigFromParams(params);
+    return NextResponse.json({
+      receivedText: params.get("text"),
+      cfgText: cfg.text,
+      cfgTextTrim: cfg.text.trim(),
+      allParams: Object.fromEntries(params),
+    });
+  }
+
   const cfg = coverConfigFromParams(params);
   const type = params.get("type") === "backdrop" ? "backdrop" : "poster";
 
