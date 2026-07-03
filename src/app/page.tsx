@@ -69,8 +69,9 @@ function thumbUrl(path: string) {
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
 
 function loadImg(url: string): Promise<HTMLImageElement> {
-  // Proxy TMDB images para evitar CORS
-  const proxyUrl = url.startsWith("https://image.tmdb.org/")
+  // Proxy para imágenes que necesitan CORS (TMDB, Kitsu, etc)
+  const needsProxy = url.startsWith("https://") && !url.startsWith("data:");
+  const proxyUrl = needsProxy
     ? `/api/logo-proxy?url=${encodeURIComponent(url)}`
     : url;
 

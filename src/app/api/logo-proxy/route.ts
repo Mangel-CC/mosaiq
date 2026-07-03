@@ -1,12 +1,28 @@
+// Dominios permitidos para evitar abuso del proxy
+const ALLOWED_DOMAINS = [
+  "image.tmdb.org",
+  "media.kitsu.app",
+  "plugin.mangelcc.dev",
+];
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const url = searchParams.get("url");
 
-  if (!url || !url.startsWith("https://image.tmdb.org/")) {
-    return new Response("Invalid URL", { status: 400 });
+  if (!url) {
+    return new Response("Missing URL", { status: 400 });
   }
 
   try {
+    const urlObj = new URL(url);
+    const isAllowed = ALLOWED_DOMAINS.some((domain) =>
+      urlObj.hostname.endsWith(domain)
+    );
+
+    if (!isAllowed) {
+      return new Response("Domain not allowed", { status: 403 });
+    }
+
     const res = await fetch(url);
     if (!res.ok) return new Response("Not found", { status: 404 });
 
