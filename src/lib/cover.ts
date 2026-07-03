@@ -54,8 +54,9 @@ export interface CoverConfig {
 }
 
 export const DEFAULT_COVER_CONFIG: CoverConfig = {
-  width: 1000,
-  height: 1500,
+  // A juego con el tipo por defecto del editor ("backdrop")
+  width: 1920,
+  height: 1080,
   bgScale: 1,
   bgColor: "#000000",
   darken: 0.2,

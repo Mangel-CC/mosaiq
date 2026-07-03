@@ -461,13 +461,17 @@ export default function Editor() {
     setCatalogInput("");
   };
 
-  const loadCatalog = async () => {
+  const loadCatalog = async (
+    urls: string[] = catalogUrlList,
+    limit: number = catalogLimit,
+    exclude: string[] = []
+  ) => {
     setCatalogLoading(true);
     setCatalogError(null);
     try {
       const q = new URLSearchParams();
-      for (const u of catalogUrlList) q.append("url", u);
-      q.set("limit", String(catalogLimit));
+      for (const u of urls) q.append("url", u);
+      q.set("limit", String(limit));
       const res = await fetch(withKey(`/api/catalog?${q.toString()}`));
       const data = await res.json();
       if (data.error) {
@@ -484,8 +488,9 @@ export default function Editor() {
           backdrop: it.backdrop,
         })
       );
-      setItems(loaded);
-      setExcluded([]);
+      const excludeSet = new Set(exclude);
+      setItems(loaded.filter((it) => !excludeSet.has(String(it.id))));
+      setExcluded(exclude);
     } catch {
       setCatalogError("Error de red cargando el catálogo");
     } finally {
@@ -602,7 +607,10 @@ export default function Editor() {
       if (catalogs.length > 0) {
         setCatalogUrlList(catalogs);
         setCoverSource("top");
-        setCoverPick(Math.max(1, Number(p.get("pick")) || 1));
+        const pick = Math.max(1, Number(p.get("pick")) || 1);
+        setCoverPick(pick);
+        // El fondo sale de la colección: se cargan los títulos ya mismo
+        void loadCatalog(catalogs, Math.max(pick + 5, catalogLimit));
       } else {
         const img = p.get("img");
         if (img) {
@@ -624,11 +632,18 @@ export default function Editor() {
       setConfig({ ...DEFAULT_CONFIG, ...configFromParams(p) });
       if (catalogs.length > 0) {
         setCatalogUrlList(catalogs);
-        const limit = Number(p.get("limit"));
-        if (Number.isFinite(limit) && limit > 0)
-          setCatalogLimit(Math.max(4, Math.min(60, limit)));
+        const rawLimit = Number(p.get("limit"));
+        const limit =
+          Number.isFinite(rawLimit) && rawLimit > 0
+            ? Math.max(4, Math.min(60, rawLimit))
+            : catalogLimit;
+        setCatalogLimit(limit);
         const exclude = p.get("exclude");
-        setExcluded(exclude ? exclude.split(",").filter(Boolean) : []);
+        const excludeList = exclude
+          ? exclude.split(",").filter(Boolean)
+          : [];
+        setExcluded(excludeList);
+        void loadCatalog(catalogs, limit, excludeList);
       }
       // Los paths de ?imgs= entran como títulos manuales de la colección
       const imgs = (p.get("imgs") ?? "").split(",").filter(Boolean);
@@ -777,9 +792,8 @@ export default function Editor() {
               </p>
             )}
             <p className="mt-1 text-[11px] text-neutral-600">
-              Restaura todos los ajustes de una imagen generada antes. Si usa
-              catálogos, pulsa &quot;Cargar y previsualizar&quot; para traer
-              los títulos.
+              Restaura todos los ajustes de una imagen generada antes; si usa
+              catálogos, los títulos se cargan automáticamente.
             </p>
           </div>
 
@@ -1031,7 +1045,7 @@ export default function Editor() {
               />
               <button
                 disabled={catalogUrlList.length === 0 || catalogLoading}
-                onClick={loadCatalog}
+                onClick={() => loadCatalog()}
                 className="flex-1 rounded bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs font-medium"
               >
                 {catalogLoading ? "Cargando…" : "Cargar y previsualizar"}
