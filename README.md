@@ -11,10 +11,8 @@ Those not self-hosting can [visit the public instance.](https://mosaiq.mangelcc.
 ## Showcase
 
 <p align="center">
-  <img src="https://via.placeholder.com/400x600?text=Mosaic+Preview" width="23%"/>
-  <img src="https://via.placeholder.com/400x600?text=Cover+Portrait" width="23%"/>
-  <img src="https://via.placeholder.com/1920x1080?text=Wallpaper+Netflix" width="47%"/>
-  <img src="https://via.placeholder.com/1500x500?text=Banner+Asset" width="47%"/>
+  <img src="Showcase/mosaic.png" width="48%"/>
+  <img src="Showcase/cover.png" width="48%"/>
 </p>
 
 ---
