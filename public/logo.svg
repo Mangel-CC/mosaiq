@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 96" role="img" aria-label="mosaiq">
+  <style>
+    text { fill: #18181b; }
+    @media (prefers-color-scheme: dark) { text { fill: #f4f4f8; } }
+  </style>
+  <g transform="rotate(-8 38 52)">
+    <rect x="16" y="22" width="18" height="27" rx="4" fill="#6d28d9"/>
+    <rect x="16" y="53" width="18" height="27" rx="4" fill="#ec4899"/>
+    <rect x="38" y="30" width="18" height="27" rx="4" fill="#8b5cf6"/>
+    <rect x="38" y="61" width="18" height="27" rx="4" fill="#a78bfa"/>
+  </g>
+  <text x="78" y="63" font-family="ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="44" font-weight="600" letter-spacing="-1">mosaiq</text>
+</svg>
