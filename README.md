@@ -11,8 +11,8 @@ Those not self-hosting can [visit the public instance.](https://mosaiq.mangelcc.
 ## Showcase
 
 <p align="center">
-  <img src="Showcase/mosaic.png" width="48%"/>
-  <img src="Showcase/cover.png" width="48%"/>
+  <img src="showcase/mosaic.png" width="48%"/>
+  <img src="showcase/cover.png" width="48%"/>
 </p>
 
 ---
