@@ -61,6 +61,15 @@ async function resolveMeta(meta: StremioMeta): Promise<CatalogItem> {
           data.tv_results?.[0] ??
           null;
       }
+    } else if (meta.name) {
+      // Si no hay ID, intentar buscar por nombre
+      const res = await tmdbFetch("/search/" + mediaType, {
+        query: meta.name,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        detail = data.results?.[0] ?? null;
+      }
     }
 
     if (detail && (detail.poster_path || detail.backdrop_path)) {
