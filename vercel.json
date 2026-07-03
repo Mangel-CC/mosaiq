@@ -1,14 +1,7 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "npm install",
   "framework": "nextjs",
-  "env": {
-    "TMDB_API_KEY": {
-      "description": "TMDB API Key (v3 or v4)",
-      "required": true
-    }
-  },
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 60
