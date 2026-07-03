@@ -5,12 +5,14 @@ import {
   DEFAULT_CONFIG,
   MosaicConfig,
   PRESETS,
+  configFromParams,
   configToParams,
   renderMosaic,
 } from "@/lib/mosaic";
 import {
   CoverConfig,
   DEFAULT_COVER_CONFIG,
+  coverConfigFromParams,
   coverConfigToParams,
   renderCover,
 } from "@/lib/cover";
@@ -563,6 +565,91 @@ export default function Editor() {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  // ---- Importar una imagen ya generada para volver a editarla ----
+  const [importInput, setImportInput] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importOk, setImportOk] = useState(false);
+
+  const importFromUrl = () => {
+    setImportError(null);
+    setImportOk(false);
+    let u: URL;
+    try {
+      u = new URL(importInput.trim());
+    } catch {
+      setImportError("Eso no parece una URL válida");
+      return;
+    }
+    const p = u.searchParams;
+    const isCover = u.pathname.includes("/api/cover");
+    const isRender = u.pathname.includes("/api/render");
+    if (!isCover && !isRender) {
+      setImportError(
+        "Debe ser una URL generada por la app (/api/render o /api/cover)"
+      );
+      return;
+    }
+    const key = p.get("key");
+    if (key) setAccessKey(key);
+    const catalogs = p.getAll("catalog").filter(Boolean);
+
+    if (isCover) {
+      setMode("cover");
+      setCoverCfg({ ...DEFAULT_COVER_CONFIG, ...coverConfigFromParams(p) });
+      setCoverType(p.get("type") === "poster" ? "poster" : "backdrop");
+      setNoText(p.get("notext") === "1");
+      setLogoUrl(p.get("logo") ?? "");
+      if (catalogs.length > 0) {
+        setCatalogUrlList(catalogs);
+        setCoverSource("top");
+        setCoverPick(Math.max(1, Number(p.get("pick")) || 1));
+      } else {
+        const img = p.get("img");
+        if (img) {
+          const media = p.get("media");
+          setCoverSource("fixed");
+          setSelectedCover({
+            id: p.get("id") ?? img,
+            mediaType:
+              media === "movie" || media === "tv" ? media : "catalog",
+            title: "Importado desde URL",
+            year: "",
+            poster: img,
+            backdrop: img,
+          });
+        }
+      }
+    } else {
+      setMode("mosaic");
+      setConfig({ ...DEFAULT_CONFIG, ...configFromParams(p) });
+      if (catalogs.length > 0) {
+        setCatalogUrlList(catalogs);
+        const limit = Number(p.get("limit"));
+        if (Number.isFinite(limit) && limit > 0)
+          setCatalogLimit(Math.max(4, Math.min(60, limit)));
+        const exclude = p.get("exclude");
+        setExcluded(exclude ? exclude.split(",").filter(Boolean) : []);
+      }
+      // Los paths de ?imgs= entran como títulos manuales de la colección
+      const imgs = (p.get("imgs") ?? "").split(",").filter(Boolean);
+      if (imgs.length > 0) {
+        setItems(
+          imgs.map((path, i) => ({
+            id: `import-${i}-${path}`,
+            mediaType: "movie" as const,
+            title: `Importado ${i + 1}`,
+            year: "",
+            poster: path,
+            backdrop: path,
+          }))
+        );
+      }
+    }
+    setImportOk(true);
+    setImportInput("");
+    setTimeout(() => setImportOk(false), 2500);
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       <header className="border-b border-neutral-800 px-6 py-3 flex items-center gap-3">
@@ -660,6 +747,43 @@ export default function Editor() {
         {/* ---- Panel izquierdo: contenido ---- */}
         <aside className="order-2 lg:order-1 border-r border-neutral-800 p-4 space-y-4 lg:overflow-y-auto lg:max-h-[calc(100vh-53px)]">
           <div>
+            <label className="text-xs uppercase tracking-wide text-neutral-500">
+              Editar imagen existente
+            </label>
+            <div className="mt-1 flex gap-1">
+              <input
+                value={importInput}
+                onChange={(e) => setImportInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") importFromUrl();
+                }}
+                placeholder="Pega una URL de /api/render o /api/cover"
+                className="flex-1 min-w-0 rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
+              />
+              <button
+                disabled={!importInput.trim()}
+                onClick={importFromUrl}
+                className="rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-2 text-xs whitespace-nowrap"
+              >
+                Cargar
+              </button>
+            </div>
+            {importError && (
+              <p className="mt-1 text-xs text-red-400">{importError}</p>
+            )}
+            {importOk && (
+              <p className="mt-1 text-xs text-emerald-400">
+                Ajustes importados: sigue editando donde lo dejaste.
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-neutral-600">
+              Restaura todos los ajustes de una imagen generada antes. Si usa
+              catálogos, pulsa &quot;Cargar y previsualizar&quot; para traer
+              los títulos.
+            </p>
+          </div>
+
+          <div className="border-t border-neutral-800 pt-4">
             <label className="text-xs uppercase tracking-wide text-neutral-500">
               Buscar en TMDB
             </label>
