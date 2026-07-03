@@ -330,17 +330,16 @@ export function coverConfigToParams(cfg: CoverConfig): URLSearchParams {
   p.set("logox", String(cfg.logoX));
   p.set("logoy", String(cfg.logoY));
   if (cfg.logoAngle !== 0) p.set("logoangle", String(cfg.logoAngle));
-  if (cfg.text.trim()) {
-    p.set("text", cfg.text.trim());
-    p.set("font", cfg.textFont);
-    p.set("textcolor", cfg.textColor.replace("#", ""));
-    p.set("textbold", cfg.textBold ? "1" : "0");
-    p.set("textsize", String(cfg.textSize));
-    p.set("textx", String(cfg.textX));
-    p.set("texty", String(cfg.textY));
-    if (cfg.textAngle !== 0) p.set("textangle", String(cfg.textAngle));
-    p.set("textshadow", String(cfg.textShadow));
-  }
+  // Siempre pasar parámetros de texto para consistencia
+  if (cfg.text.trim()) p.set("text", cfg.text.trim());
+  p.set("font", cfg.textFont);
+  p.set("textcolor", cfg.textColor.replace("#", ""));
+  p.set("textbold", cfg.textBold ? "1" : "0");
+  p.set("textsize", String(cfg.textSize));
+  p.set("textx", String(cfg.textX));
+  p.set("texty", String(cfg.textY));
+  if (cfg.textAngle !== 0) p.set("textangle", String(cfg.textAngle));
+  p.set("textshadow", String(cfg.textShadow));
   p.set("bg", cfg.bgColor.replace("#", ""));
   if (cfg.plate !== "none") {
     p.set("plate", cfg.plate);
