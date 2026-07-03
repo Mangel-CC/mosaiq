@@ -85,10 +85,21 @@ export async function resolveCatalog(
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.items;
 
-  const res = await fetch(catalogUrl, {
-    headers: { Accept: "application/json" },
-    cache: "no-store",
-  });
+  // Timeout de 10s para descargar el catálogo
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  let res: Response;
+  try {
+    res = await fetch(catalogUrl, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (!res.ok) throw new Error(`El catálogo respondió ${res.status}`);
   let data: { metas?: StremioMeta[]; items?: StremioMeta[] };
   try {
@@ -103,9 +114,14 @@ export async function resolveCatalog(
     (m) => !excludeSet.has(m.id ?? "")
   );
 
-  const items = (
-    await Promise.all(metas.slice(0, limit).map(resolveMeta))
-  ).filter((it) => it.poster || it.backdrop);
+  // Procesar máximo 5 items en paralelo para no sobrecargar TMDB
+  const itemsToResolve = metas.slice(0, limit);
+  const items: CatalogItem[] = [];
+  for (let i = 0; i < itemsToResolve.length; i += 5) {
+    const batch = itemsToResolve.slice(i, i + 5);
+    const resolved = await Promise.all(batch.map(resolveMeta));
+    items.push(...resolved.filter((it) => it.poster || it.backdrop));
+  }
 
   cache.set(cacheKey, { at: Date.now(), items });
   return items;

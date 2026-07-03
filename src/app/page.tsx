@@ -186,6 +186,29 @@ export default function Editor() {
     setConfig((c) => ({ ...c, ...PRESETS[name].config }));
   };
 
+  const resetAll = () => {
+    setConfig(DEFAULT_CONFIG);
+    setPreset("netflix");
+    setItems([]);
+    setQuery("");
+    setResults([]);
+    setSearchError(null);
+    setCatalogUrlList([]);
+    setCatalogInput("");
+    setCatalogLimit(30);
+    setExcluded([]);
+    setCoverCfg(DEFAULT_COVER_CONFIG);
+    setCoverType("backdrop");
+    setCoverSource("top");
+    setCoverPick(1);
+    setSelectedCover(null);
+    setLogoUrl("");
+    setLogoQuery("");
+    setLogoResults([]);
+    setNoText(false);
+    setTextlessArt(null);
+  };
+
   // Búsqueda con debounce
   useEffect(() => {
     if (!query.trim()) {
@@ -512,6 +535,13 @@ export default function Editor() {
               {label}
             </button>
           ))}
+          <button
+            onClick={resetAll}
+            title="Limpiar todos los campos y comenzar de nuevo"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-colors"
+          >
+            Nuevo
+          </button>
         </nav>
         <div className="ml-auto flex items-center gap-3">
           {(keyRequired || accessKey.trim() !== "") && (
