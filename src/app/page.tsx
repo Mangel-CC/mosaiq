@@ -302,10 +302,25 @@ export default function Editor() {
     return () => clearTimeout(t);
   }, [logoQuery, withKey]);
 
+  const [isRendering, setIsRendering] = useState(false);
+
+  // Precachear imágenes en background
+  useEffect(() => {
+    const pathsToCache = imagePaths.slice(0, 30); // Precargar máximo 30
+    pathsToCache.forEach((p) => {
+      const url = imgUrl(p, config.imageType);
+      // Precargar sin esperar
+      loadImg(url).catch(() => {
+        // Ignorar errores de precacheo
+      });
+    });
+  }, [imagePaths, config.imageType]);
+
   // Render del preview cada vez que cambia algo
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setIsRendering(true);
       const canvas = canvasRef.current;
       if (!canvas) return;
       const size = mode === "cover" ? coverCfg : config;
@@ -360,6 +375,7 @@ export default function Editor() {
         if (images.length === 0)
           drawEmptyMsg("Añade títulos desde el buscador para ver el mosaico");
       }
+      if (!cancelled) setIsRendering(false);
     })();
     return () => {
       cancelled = true;
@@ -875,16 +891,25 @@ export default function Editor() {
 
         {/* ---- Centro: preview ---- */}
         <section className="order-1 lg:order-2 p-6 flex flex-col gap-3 items-center justify-center">
-          <canvas
-            ref={canvasRef}
-            className="max-w-full max-h-[70vh] rounded-lg shadow-2xl border border-neutral-800"
-            style={{
-              aspectRatio:
-                mode === "cover"
-                  ? `${coverCfg.width} / ${coverCfg.height}`
-                  : `${config.width} / ${config.height}`,
-            }}
-          />
+          <div className="relative">
+            <canvas
+              ref={canvasRef}
+              className={`max-w-full max-h-[70vh] rounded-lg shadow-2xl border border-neutral-800 transition-opacity ${
+                isRendering ? "opacity-60" : "opacity-100"
+              }`}
+              style={{
+                aspectRatio:
+                  mode === "cover"
+                    ? `${coverCfg.width} / ${coverCfg.height}`
+                    : `${config.width} / ${config.height}`,
+              }}
+            />
+            {isRendering && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg pointer-events-none">
+                <div className="w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
           <p className="text-[11px] text-neutral-600 tabular-nums">
             {mode === "cover"
               ? `${coverCfg.width} × ${coverCfg.height} px`
