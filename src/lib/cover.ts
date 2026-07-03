@@ -245,7 +245,11 @@ export function renderCover(
     ctx.translate(w * cfg.textX, h * cfg.textY);
     ctx.rotate((cfg.textAngle * Math.PI) / 180);
     const px = Math.max(4, w * cfg.textSize);
-    ctx.font = `${cfg.textBold ? "bold " : ""}${px}px ${cfg.textFont}`;
+    // Usar sans-serif como fallback si la fuente es web-only (no disponible en servidor)
+    const font = cfg.textFont.toLowerCase();
+    const isWebOnlyFont = /arial|georgia|trebuchet|verdana|impact|courier new/i.test(font);
+    const actualFont = isWebOnlyFont ? "sans-serif" : cfg.textFont;
+    ctx.font = `${cfg.textBold ? "bold " : ""}${px}px ${actualFont}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     if (cfg.textShadow > 0) {
