@@ -513,27 +513,40 @@ export default function Editor() {
             </button>
           ))}
         </nav>
-        {(keyRequired || accessKey.trim() !== "") && (
-        <div className="ml-auto flex items-center gap-2">
-          {keyRequired && !accessKey.trim() && (
-            <span className="text-[11px] text-red-400">
-              Este servidor requiere access key
-            </span>
+        <div className="ml-auto flex items-center gap-3">
+          {(keyRequired || accessKey.trim() !== "") && (
+            <>
+              {keyRequired && !accessKey.trim() && (
+                <span className="text-[11px] text-red-400">
+                  Este servidor requiere access key
+                </span>
+              )}
+              <input
+                type="password"
+                value={accessKey}
+                onChange={(e) => setAccessKey(e.target.value)}
+                placeholder="Access key"
+                title="Solo hace falta si el servidor define ACCESS_KEY"
+                className={`w-36 rounded bg-neutral-900 border px-3 py-1.5 text-xs outline-none focus:border-violet-500 ${
+                  keyRequired && !accessKey.trim()
+                    ? "border-red-500"
+                    : "border-neutral-700"
+                }`}
+              />
+            </>
           )}
-          <input
-            type="password"
-            value={accessKey}
-            onChange={(e) => setAccessKey(e.target.value)}
-            placeholder="Access key"
-            title="Solo hace falta si el servidor define ACCESS_KEY"
-            className={`w-36 rounded bg-neutral-900 border px-3 py-1.5 text-xs outline-none focus:border-violet-500 ${
-              keyRequired && !accessKey.trim()
-                ? "border-red-500"
-                : "border-neutral-700"
-            }`}
-          />
+          <a
+            href="https://github.com/Mangel-CC/mosaiq"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Ver en GitHub"
+            className="text-neutral-400 hover:text-white transition-colors"
+          >
+            <svg viewBox="0 0 16 16" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+            </svg>
+          </a>
         </div>
-        )}
       </header>
 
       <main className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-0 min-h-[calc(100vh-53px)]">
@@ -1025,17 +1038,11 @@ export default function Editor() {
               <Slider label="Viñeta" value={coverCfg.vignette} min={0} max={1} step={0.05} onChange={(v) => setCover("vignette", v)} />
               <Slider label="Fade inferior" value={coverCfg.bottomFade} min={0} max={1} step={0.05} onChange={(v) => setCover("bottomFade", v)} />
 
-              <div className="flex items-center justify-between">
-                <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Color de fondo
-                </label>
-                <input
-                  type="color"
-                  value={coverCfg.bgColor}
-                  onChange={(e) => setCover("bgColor", e.target.value)}
-                  className="h-8 w-14 rounded bg-transparent cursor-pointer"
-                />
-              </div>
+              <ColorField
+                label="Color de fondo"
+                value={coverCfg.bgColor}
+                onChange={(v) => setCover("bgColor", v)}
+              />
 
               <div className="border-t border-neutral-800 pt-4">
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
@@ -1066,17 +1073,11 @@ export default function Editor() {
                 </div>
                 {coverCfg.plate !== "none" && (
                   <div className="mt-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs uppercase tracking-wide text-neutral-500">
-                        Color de placa
-                      </label>
-                      <input
-                        type="color"
-                        value={coverCfg.plateColor}
-                        onChange={(e) => setCover("plateColor", e.target.value)}
-                        className="h-8 w-14 rounded bg-transparent cursor-pointer"
-                      />
-                    </div>
+                    <ColorField
+                      label="Color de placa"
+                      value={coverCfg.plateColor}
+                      onChange={(v) => setCover("plateColor", v)}
+                    />
                     <Slider label="Opacidad" value={coverCfg.plateOpacity} min={0} max={1} step={0.05} onChange={(v) => setCover("plateOpacity", v)} />
                     <Slider label="Grosor" value={coverCfg.plateSize} min={0} max={1} step={0.01} onChange={(v) => setCover("plateSize", v)} />
                     {(coverCfg.plate === "left" ||
@@ -1174,17 +1175,11 @@ export default function Editor() {
                         ))}
                       </select>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs uppercase tracking-wide text-neutral-500">
-                        Color de texto
-                      </label>
-                      <input
-                        type="color"
-                        value={coverCfg.textColor}
-                        onChange={(e) => setCover("textColor", e.target.value)}
-                        className="h-8 w-14 rounded bg-transparent cursor-pointer"
-                      />
-                    </div>
+                    <ColorField
+                      label="Color de texto"
+                      value={coverCfg.textColor}
+                      onChange={(v) => setCover("textColor", v)}
+                    />
                     <label className="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1284,17 +1279,11 @@ export default function Editor() {
           <Slider label="Viñeta" value={config.vignette} min={0} max={1} step={0.05} onChange={(v) => set("vignette", v)} />
           <Slider label="Fade inferior" value={config.bottomFade} min={0} max={1} step={0.05} onChange={(v) => set("bottomFade", v)} />
 
-          <div className="flex items-center justify-between">
-            <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Color de fondo
-            </label>
-            <input
-              type="color"
-              value={config.bgColor}
-              onChange={(e) => set("bgColor", e.target.value)}
-              className="h-8 w-14 rounded bg-transparent cursor-pointer"
-            />
-          </div>
+          <ColorField
+            label="Color de fondo"
+            value={config.bgColor}
+            onChange={(v) => set("bgColor", v)}
+          />
             </>
           )}
         </aside>
@@ -1345,6 +1334,398 @@ function Slider({
         onChange={(e) => onChange(Number(e.target.value))}
         className="mt-1 w-full accent-violet-500"
       />
+    </div>
+  );
+}
+
+// ---- Selector de color propio ----
+// Sustituye al <input type="color"> nativo: su diálogo de Chromium puede
+// dejar la ventana sin recibir clics al cerrarse. Este popover es HTML
+// normal dentro de la página, así que no puede bloquear nada.
+
+function hexToRgbArr(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  const n = m ? parseInt(m[1], 16) : 0;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const to = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${to(r)}${to(g)}${to(b)}`;
+}
+
+// HSV: h 0..360, s 0..100, v 0..100 (el picker es un área saturación/valor)
+function hexToHsv(hex: string): [number, number, number] {
+  const [r8, g8, b8] = hexToRgbArr(hex);
+  const r = r8 / 255,
+    g = g8 / 255,
+    b = b8 / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = (((g - b) / d + 6) % 6) * 60;
+    else if (max === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+  }
+  return [h, max === 0 ? 0 : (d / max) * 100, max * 100];
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  s /= 100;
+  v /= 100;
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0,
+    g = 0,
+    b = 0;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return rgbToHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hexDraft, setHexDraft] = useState(value);
+  // HSV local: conserva el tono aunque el color sea gris/negro (donde la
+  // conversión hex→HSV pierde esa información)
+  const [hsv, setHsv] = useState<[number, number, number]>(() =>
+    hexToHsv(value)
+  );
+  const ref = useRef<HTMLDivElement>(null);
+  const svRef = useRef<HTMLDivElement>(null);
+  const hueRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setHexDraft(value);
+    // Solo re-sincroniza el HSV si el cambio vino de fuera (swatch, hex, rgb)
+    setHsv((prev) =>
+      hsvToHex(prev[0], prev[1], prev[2]).toLowerCase() === value.toLowerCase()
+        ? prev
+        : hexToHsv(value)
+    );
+  }, [value]);
+
+  const commitHsv = (h: number, s: number, v: number) => {
+    setHsv([h, s, v]);
+    onChange(hsvToHex(h, s, v));
+  };
+
+  // Cuentagotas por captura de pantalla: getDisplayMedia congela un
+  // fotograma de la pantalla/ventana/pestaña elegida y el píxel se escoge
+  // dentro de la app. NO usar la API nativa EyeDropper: en el Chromium/
+  // Windows del usuario su overlay invisible queda montado tras elegir el
+  // color y bloquea todos los clics del navegador (sobrevive incluso a
+  // recargar la página; el abort() del signal tampoco lo desmonta —
+  // probado el 2026-07-03).
+  const [shot, setShot] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [loupe, setLoupe] = useState<{
+    x: number;
+    y: number;
+    hex: string;
+  } | null>(null);
+  const shotCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const startPick = async () => {
+    if (picking || shot) return;
+    if (!navigator.mediaDevices?.getDisplayMedia) return;
+    setPicking(true);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+      // Un pequeño margen para que llegue el primer fotograma real
+      await new Promise((r) => setTimeout(r, 200));
+      const cap = document.createElement("canvas");
+      cap.width = video.videoWidth;
+      cap.height = video.videoHeight;
+      cap.getContext("2d")?.drawImage(video, 0, 0);
+      // La captura ya está congelada: se corta la compartición al instante
+      stream.getTracks().forEach((t) => t.stop());
+      shotCanvasRef.current = cap;
+      setShot(cap.toDataURL());
+    } catch {
+      // usuario canceló el diálogo de compartir
+    } finally {
+      setPicking(false);
+    }
+  };
+
+  const readShotPixel = (
+    e: { clientX: number; clientY: number; currentTarget: EventTarget }
+  ): string | null => {
+    const img = e.currentTarget as HTMLImageElement;
+    const cap = shotCanvasRef.current;
+    if (!cap) return null;
+    const r = img.getBoundingClientRect();
+    const x = Math.floor(((e.clientX - r.left) / r.width) * cap.width);
+    const y = Math.floor(((e.clientY - r.top) / r.height) * cap.height);
+    const d = cap
+      .getContext("2d")
+      ?.getImageData(
+        Math.max(0, Math.min(cap.width - 1, x)),
+        Math.max(0, Math.min(cap.height - 1, y)),
+        1,
+        1
+      ).data;
+    return d ? rgbToHex(d[0], d[1], d[2]) : null;
+  };
+
+  const closeShot = useCallback(() => {
+    setShot(null);
+    setLoupe(null);
+    shotCanvasRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!shot) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeShot();
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [shot, closeShot]);
+
+  const dragHandler =
+    (el: React.RefObject<HTMLDivElement | null>, apply: (fx: number, fy: number) => void) =>
+    (e: React.PointerEvent) => {
+      const move = (ev: { clientX: number; clientY: number }) => {
+        const r = el.current?.getBoundingClientRect();
+        if (!r) return;
+        const fx = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+        const fy = Math.max(0, Math.min(1, (ev.clientY - r.top) / r.height));
+        apply(fx, fy);
+      };
+      try {
+        (e.target as Element).setPointerCapture(e.pointerId);
+      } catch {
+        // pointerId no activo (p. ej. eventos sintéticos): el drag sigue
+        // funcionando vía listeners de window
+      }
+      move(e);
+      const onMove = (ev: PointerEvent) => move(ev);
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    };
+
+  useEffect(() => {
+    // Mientras se usa el cuentagotas no se cierra el popover, para que el
+    // clic sobre la captura no lo descarte
+    if (!open || picking || shot) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open, picking, shot]);
+
+  const [h, s, v] = hsv;
+  const [r, g, b] = hexToRgbArr(value);
+
+  const setChannel = (idx: number, raw: string) => {
+    const n = Math.max(0, Math.min(255, Number(raw) || 0));
+    const rgb: [number, number, number] = [r, g, b];
+    rgb[idx] = n;
+    onChange(rgbToHex(...rgb));
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex items-center justify-between">
+        <label className="text-xs uppercase tracking-wide text-neutral-500">
+          {label}
+        </label>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          title={value}
+          className="h-8 w-14 rounded border border-neutral-700 cursor-pointer"
+          style={{ backgroundColor: value }}
+        />
+      </div>
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-60 rounded-lg border border-neutral-700 bg-neutral-900 p-3 shadow-2xl space-y-3">
+          {/* Área saturación/valor */}
+          <div
+            ref={svRef}
+            onPointerDown={dragHandler(svRef, (fx, fy) =>
+              commitHsv(h, fx * 100, (1 - fy) * 100)
+            )}
+            className="relative h-32 w-full rounded cursor-crosshair touch-none select-none"
+            style={{
+              background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${h}, 100%, 50%))`,
+            }}
+          >
+            <span
+              className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow pointer-events-none"
+              style={{
+                left: `${s}%`,
+                top: `${100 - v}%`,
+                backgroundColor: value,
+              }}
+            />
+          </div>
+          {/* Barra de tono */}
+          <div
+            ref={hueRef}
+            onPointerDown={dragHandler(hueRef, (fx) =>
+              commitHsv(fx * 360, s, v)
+            )}
+            className="relative h-3 w-full rounded-full cursor-pointer touch-none select-none"
+            style={{
+              background:
+                "linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)",
+            }}
+          >
+            <span
+              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow pointer-events-none"
+              style={{
+                left: `${(h / 360) * 100}%`,
+                backgroundColor: `hsl(${h}, 100%, 50%)`,
+              }}
+            />
+          </div>
+          {/* Campos RGB */}
+          <div className="flex gap-2">
+            {([
+              ["R", r, 0],
+              ["G", g, 1],
+              ["B", b, 2],
+            ] as const).map(([ch, val, idx]) => (
+              <label key={ch} className="flex-1">
+                <span className="block text-center text-[10px] uppercase text-neutral-500">
+                  {ch}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={255}
+                  value={val}
+                  onChange={(e) => setChannel(idx, e.target.value)}
+                  className="w-full rounded bg-neutral-950 border border-neutral-700 px-1.5 py-1 text-center text-xs tabular-nums outline-none focus:border-violet-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="h-6 w-6 rounded border border-neutral-700 shrink-0"
+              style={{ backgroundColor: value }}
+            />
+            <input
+              value={hexDraft}
+              onChange={(e) => {
+                const v = e.target.value;
+                setHexDraft(v);
+                if (/^#[0-9a-f]{6}$/i.test(v.trim())) onChange(v.trim());
+              }}
+              spellCheck={false}
+              className="w-full rounded bg-neutral-950 border border-neutral-700 px-2 py-1 text-xs font-mono outline-none focus:border-neutral-500"
+            />
+            <button
+              onClick={startPick}
+              title="Cuentagotas: elegir un color del preview"
+              className={`shrink-0 rounded border p-1.5 ${
+                picking
+                  ? "border-violet-500 text-violet-400"
+                  : "border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-500"
+              }`}
+            >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m2 22 1-1h3l9-9" />
+                  <path d="M3 21v-3l9-9" />
+                  <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
+                </svg>
+            </button>
+          </div>
+          {picking && (
+            <p className="text-[11px] text-violet-400">
+              Elige qué pantalla, ventana o pestaña compartir…
+            </p>
+          )}
+        </div>
+      )}
+      {/* Overlay de captura: elegir el píxel sobre el fotograma congelado */}
+      {shot && (
+        <div className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center gap-3 p-6">
+          <p className="text-xs text-neutral-300">
+            Haz clic en la captura para tomar el color · Esc cancela
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={shot}
+            alt="Captura de pantalla para elegir color"
+            draggable={false}
+            className="max-w-full max-h-[80vh] rounded border border-neutral-700 cursor-crosshair select-none"
+            onMouseMove={(e) => {
+              const hex = readShotPixel(e);
+              if (hex) setLoupe({ x: e.clientX, y: e.clientY, hex });
+            }}
+            onMouseLeave={() => setLoupe(null)}
+            onClick={(e) => {
+              const hex = readShotPixel(e);
+              if (hex) onChange(hex);
+              closeShot();
+            }}
+          />
+          <button
+            onClick={closeShot}
+            className="rounded bg-neutral-800 hover:bg-neutral-700 px-4 py-1.5 text-xs"
+          >
+            Cancelar
+          </button>
+          {loupe && (
+            <div
+              className="pointer-events-none fixed z-[101] flex items-center gap-1.5 rounded-md border border-neutral-600 bg-neutral-900/95 px-2 py-1 shadow-xl"
+              style={{ left: loupe.x + 14, top: loupe.y + 14 }}
+            >
+              <span
+                className="h-4 w-4 rounded border border-neutral-500"
+                style={{ backgroundColor: loupe.hex }}
+              />
+              <span className="text-[11px] font-mono text-neutral-200">
+                {loupe.hex}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
