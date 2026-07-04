@@ -747,8 +747,24 @@ export default function Editor() {
           <button
             onClick={resetAll}
             title={t.newBtnTitle}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-colors"
+            aria-label={t.newBtnTitle}
+            className="ml-1 flex items-center gap-1.5 rounded-md border border-neutral-700 px-2.5 py-1.5 text-sm font-medium text-neutral-300 hover:text-white hover:border-neutral-500 hover:bg-neutral-800/60 transition-colors"
           >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M9 15h6" />
+              <path d="M12 12v6" />
+            </svg>
             {t.newBtn}
           </button>
         </nav>
