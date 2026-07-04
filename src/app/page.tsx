@@ -33,23 +33,11 @@ const COVER_RESOLUTIONS = [
   { label: "1000 × 1000 (cuadrada)", w: 1000, h: 1000 },
 ];
 
-// Fuentes de Google Fonts (se cargan dinámicamente en el servidor)
+// Fuentes disponibles en Vercel
 const TEXT_FONTS = [
   "sans-serif",
   "serif",
   "monospace",
-  "Roboto",
-  "Open Sans",
-  "Lato",
-  "Montserrat",
-  "Inter",
-  "Raleway",
-  "Ubuntu",
-  "Poppins",
-  "Playfair Display",
-  "Merriweather",
-  "Courier Prime",
-  "IBM Plex Mono",
 ];
 
 const RESOLUTIONS = [
