@@ -16,6 +16,7 @@ import {
   coverConfigToParams,
   renderCover,
 } from "@/lib/cover";
+import { Dict, Lang, presetLabel, translations } from "@/lib/i18n";
 
 interface SearchItem {
   id: number | string;
@@ -26,12 +27,20 @@ interface SearchItem {
   backdrop: string | null;
 }
 
-const COVER_RESOLUTIONS = [
-  { label: "1000 × 1500 (portada)", w: 1000, h: 1500 },
-  { label: "1920 × 1080", w: 1920, h: 1080 },
-  { label: "1280 × 720", w: 1280, h: 720 },
-  { label: "1000 × 1000 (cuadrada)", w: 1000, h: 1000 },
-];
+// Los descriptores (portada/cuadrada/…) se traducen; las medidas no.
+function coverResolutions(t: Dict) {
+  const mk = (w: number, h: number, desc?: string) => ({
+    label: `${w} × ${h}${desc ? ` (${desc})` : ""}`,
+    w,
+    h,
+  });
+  return [
+    mk(1000, 1500, t.resCover),
+    mk(1920, 1080),
+    mk(1280, 720),
+    mk(1000, 1000, t.resSquare),
+  ];
+}
 
 // Fuentes empaquetadas (src/assets/fonts). Se cargan en el navegador (layout)
 // y en el servidor (serverFonts), así el preview coincide con la API.
@@ -44,13 +53,20 @@ const TEXT_FONTS = [
   "Anton",
 ];
 
-const RESOLUTIONS = [
-  { label: "1920 × 1080", w: 1920, h: 1080 },
-  { label: "2560 × 1440", w: 2560, h: 1440 },
-  { label: "3840 × 2160 (4K)", w: 3840, h: 2160 },
-  { label: "1080 × 1920 (vertical)", w: 1080, h: 1920 },
-  { label: "1500 × 500 (banner)", w: 1500, h: 500 },
-];
+function resolutions(t: Dict) {
+  const mk = (w: number, h: number, desc?: string) => ({
+    label: `${w} × ${h}${desc ? ` (${desc})` : ""}`,
+    w,
+    h,
+  });
+  return [
+    mk(1920, 1080),
+    mk(2560, 1440),
+    mk(3840, 2160, "4K"),
+    mk(1080, 1920, t.resVertical),
+    mk(1500, 500, t.resBanner),
+  ];
+}
 
 // Los items resueltos desde TMDB traen paths ("/abc.jpg"); los de fallback
 // de un catálogo pueden ser URLs absolutas.
@@ -118,6 +134,26 @@ export default function Editor() {
   const [excluded, setExcluded] = useState<string[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // ---- Idioma ----
+  const [lang, setLang] = useState<Lang>("es");
+  const t = translations[lang];
+  const langLoaded = useRef(false);
+  useEffect(() => {
+    const saved = localStorage.getItem("lang");
+    if (saved === "es" || saved === "en") setLang(saved);
+    else if (
+      typeof navigator !== "undefined" &&
+      !navigator.language.toLowerCase().startsWith("es")
+    )
+      setLang("en");
+    langLoaded.current = true;
+  }, []);
+  useEffect(() => {
+    if (langLoaded.current) localStorage.setItem("lang", lang);
+  }, [lang]);
+  const COVER_RES = useMemo(() => coverResolutions(t), [t]);
+  const RES = useMemo(() => resolutions(t), [t]);
 
   // Access key opcional (estilo PostersPlus): si el servidor define
   // ACCESS_KEY, todas las llamadas a la API deben llevar ?key=
@@ -228,7 +264,7 @@ export default function Editor() {
       return;
     }
     setSearching(true);
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(
           withKey(`/api/search?q=${encodeURIComponent(query)}`)
@@ -240,13 +276,13 @@ export default function Editor() {
           setResults(data.results);
         }
       } catch {
-        setSearchError("Error de red buscando en TMDB");
+        setSearchError(t.searchNetErr);
       } finally {
         setSearching(false);
       }
     }, 350);
-    return () => clearTimeout(t);
-  }, [query, withKey]);
+    return () => clearTimeout(timer);
+  }, [query, withKey, t]);
 
   // Rutas de imagen según el tipo elegido
   const imagePaths = useMemo(
@@ -299,7 +335,7 @@ export default function Editor() {
       setLogoResults([]);
       return;
     }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(
           withKey(`/api/providers?q=${encodeURIComponent(logoQuery)}`)
@@ -310,7 +346,7 @@ export default function Editor() {
         setLogoResults([]);
       }
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [logoQuery, withKey]);
 
   const [isRendering, setIsRendering] = useState(false);
@@ -394,8 +430,7 @@ export default function Editor() {
         const bg = bgRes.status === "fulfilled" ? bgRes.value : null;
         const logo = logoRes.status === "fulfilled" ? logoRes.value : null;
         renderCover(ctx, bg, logo, coverCfg);
-        if (!bg)
-          drawEmptyMsg("Busca un título o carga un catálogo para el fondo");
+        if (!bg) drawEmptyMsg(t.emptyCover);
       } else {
         const loaded = await Promise.allSettled(
           imagePaths.map((p) => loadImg(imgUrl(p, config.imageType)))
@@ -408,8 +443,7 @@ export default function Editor() {
           )
           .map((r) => r.value);
         renderMosaic(ctx, images, config);
-        if (images.length === 0)
-          drawEmptyMsg("Añade títulos desde el buscador para ver el mosaico");
+        if (images.length === 0) drawEmptyMsg(t.emptyMosaic);
       }
 
       // Cachear el resultado
@@ -435,6 +469,7 @@ export default function Editor() {
     logoUrl,
     noText,
     textlessArt,
+    t,
   ]);
 
   const addItem = (item: SearchItem) => {
@@ -489,7 +524,7 @@ export default function Editor() {
       setItems(loaded.filter((it) => !excludeSet.has(String(it.id))));
       setExcluded(exclude);
     } catch {
-      setCatalogError("Error de red cargando el catálogo");
+      setCatalogError(t.catalogNetErr);
     } finally {
       setCatalogLoading(false);
     }
@@ -579,16 +614,14 @@ export default function Editor() {
     try {
       u = new URL(importInput.trim());
     } catch {
-      setImportError("Eso no parece una URL válida");
+      setImportError(t.importInvalidUrl);
       return;
     }
     const p = u.searchParams;
     const isCover = u.pathname.includes("/api/cover");
     const isRender = u.pathname.includes("/api/render");
     if (!isCover && !isRender) {
-      setImportError(
-        "Debe ser una URL generada por la app (/api/render o /api/cover)"
-      );
+      setImportError(t.importNotApp);
       return;
     }
     const key = p.get("key");
@@ -617,7 +650,7 @@ export default function Editor() {
             id: p.get("id") ?? img,
             mediaType:
               media === "movie" || media === "tv" ? media : "catalog",
-            title: "Importado desde URL",
+            title: lang === "en" ? "Imported from URL" : "Importado desde URL",
             year: "",
             poster: img,
             backdrop: img,
@@ -649,7 +682,7 @@ export default function Editor() {
           imgs.map((path, i) => ({
             id: `import-${i}-${path}`,
             mediaType: "movie" as const,
-            title: `Importado ${i + 1}`,
+            title: `${lang === "en" ? "Imported" : "Importado"} ${i + 1}`,
             year: "",
             poster: path,
             backdrop: path,
@@ -681,8 +714,8 @@ export default function Editor() {
         <nav className="ml-4 flex gap-1">
           {(
             [
-              ["mosaic", "Mosaico"],
-              ["cover", "Portada"],
+              ["mosaic", t.mosaic],
+              ["cover", t.cover],
             ] as const
           ).map(([m, label]) => (
             <button
@@ -713,10 +746,10 @@ export default function Editor() {
           ))}
           <button
             onClick={resetAll}
-            title="Limpiar todos los campos y comenzar de nuevo"
+            title={t.newBtnTitle}
             className="rounded-md px-3 py-1.5 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800/60 transition-colors"
           >
-            Nuevo
+            {t.newBtn}
           </button>
         </nav>
         <div className="ml-auto flex items-center gap-3">
@@ -724,7 +757,7 @@ export default function Editor() {
             <>
               {keyRequired && !accessKey.trim() && (
                 <span className="text-[11px] text-red-400">
-                  Este servidor requiere access key
+                  {t.accessKeyRequired}
                 </span>
               )}
               <input
@@ -732,7 +765,7 @@ export default function Editor() {
                 value={accessKey}
                 onChange={(e) => setAccessKey(e.target.value)}
                 placeholder="Access key"
-                title="Solo hace falta si el servidor define ACCESS_KEY"
+                title={t.accessKeyTitle}
                 className={`w-36 rounded bg-neutral-900 border px-3 py-1.5 text-xs outline-none focus:border-violet-500 ${
                   keyRequired && !accessKey.trim()
                     ? "border-red-500"
@@ -741,11 +774,26 @@ export default function Editor() {
               />
             </>
           )}
+          <div className="flex overflow-hidden rounded-md border border-neutral-700 text-xs">
+            {(["es", "en"] as const).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`px-2 py-1 font-medium uppercase transition-colors ${
+                  lang === l
+                    ? "bg-violet-600 text-white"
+                    : "text-neutral-400 hover:text-white hover:bg-neutral-800/60"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
           <a
             href="https://github.com/Mangel-CC/mosaiq"
             target="_blank"
             rel="noopener noreferrer"
-            title="Ver en GitHub"
+            title={t.viewGithub}
             className="text-neutral-400 hover:text-white transition-colors"
           >
             <svg viewBox="0 0 16 16" className="h-5 w-5" fill="currentColor" aria-hidden="true">
@@ -760,7 +808,7 @@ export default function Editor() {
         <aside className="order-2 lg:order-1 border-r border-neutral-800 p-4 space-y-4 lg:overflow-y-auto lg:max-h-[calc(100vh-53px)]">
           <div>
             <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Editar imagen existente
+              {t.importTitle}
             </label>
             <div className="mt-1 flex gap-1">
               <input
@@ -769,7 +817,7 @@ export default function Editor() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") importFromUrl();
                 }}
-                placeholder="Pega una URL de /api/render o /api/cover"
+                placeholder={t.importPlaceholder}
                 className="flex-1 min-w-0 rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
               />
               <button
@@ -777,38 +825,33 @@ export default function Editor() {
                 onClick={importFromUrl}
                 className="rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-2 text-xs whitespace-nowrap"
               >
-                Cargar
+                {t.importLoad}
               </button>
             </div>
             {importError && (
               <p className="mt-1 text-xs text-red-400">{importError}</p>
             )}
             {importOk && (
-              <p className="mt-1 text-xs text-emerald-400">
-                Ajustes importados: sigue editando donde lo dejaste.
-              </p>
+              <p className="mt-1 text-xs text-emerald-400">{t.importOk}</p>
             )}
-            <p className="mt-1 text-[11px] text-neutral-600">
-              Restaura todos los ajustes de una imagen generada antes; si usa
-              catálogos, los títulos se cargan automáticamente.
-            </p>
+            <p className="mt-1 text-[11px] text-neutral-600">{t.importHelp}</p>
           </div>
 
           <div className="border-t border-neutral-800 pt-4">
             <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Buscar en TMDB
+              {t.searchTmdb}
             </label>
             <div className="relative mt-1">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Película o serie…"
+                placeholder={t.searchPlaceholder}
                 className="w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-2 pr-8 text-sm outline-none focus:border-violet-500"
               />
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  title="Limpiar búsqueda"
+                  title={t.clearSearch}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs"
                 >
                   ✕
@@ -819,7 +862,7 @@ export default function Editor() {
               <p className="mt-2 text-xs text-red-400">{searchError}</p>
             )}
             {searching && (
-              <p className="mt-2 text-xs text-neutral-500">Buscando…</p>
+              <p className="mt-2 text-xs text-neutral-500">{t.searching}</p>
             )}
           </div>
 
@@ -893,9 +936,7 @@ export default function Editor() {
                 })}
               </div>
               <p className="text-[11px] text-neutral-600">
-                {mode === "cover"
-                  ? "Haz clic en un resultado para usarlo como fondo de la portada."
-                  : "Haz clic para añadir o quitar de la colección."}
+                {mode === "cover" ? t.resultHelpCover : t.resultHelpMosaic}
               </p>
             </>
           )}
@@ -904,7 +945,7 @@ export default function Editor() {
           <div>
             <div className="flex items-center justify-between">
               <label className="text-xs uppercase tracking-wide text-neutral-500">
-                Colección ({items.length})
+                {t.collection} ({items.length})
               </label>
               {items.length > 0 && (
                 <div className="flex gap-3">
@@ -913,7 +954,7 @@ export default function Editor() {
                       onClick={shuffle}
                       className="text-xs text-neutral-400 hover:text-white"
                     >
-                      Mezclar
+                      {t.shuffle}
                     </button>
                   )}
                   <button
@@ -921,17 +962,17 @@ export default function Editor() {
                       setItems([]);
                       setExcluded([]);
                     }}
-                    title="Quitar todos los títulos"
+                    title={t.clearAllTitle}
                     className="text-xs text-neutral-400 hover:text-red-400"
                   >
-                    Vaciar
+                    {t.clear}
                   </button>
                 </div>
               )}
             </div>
             {items.length === 0 ? (
               <p className="mt-2 text-xs text-neutral-600">
-                Haz clic en un resultado para añadirlo.
+                {t.emptyCollection}
               </p>
             ) : (
               <div className="mt-2 grid grid-cols-4 gap-2">
@@ -948,7 +989,7 @@ export default function Editor() {
                       if (it.mediaType === "catalog")
                         setExcluded((prev) => [...prev, String(it.id)]);
                     }}
-                    title={`Quitar ${it.title}`}
+                    title={`${t.remove} ${it.title}`}
                     className="relative rounded overflow-hidden aspect-[2/3] bg-neutral-900 group"
                   >
                     {it.poster && (
@@ -971,7 +1012,7 @@ export default function Editor() {
 
           <div className="border-t border-neutral-800 pt-4">
             <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Catálogos dinámicos (Stremio / Nuvio)
+              {t.catalogsTitle}
             </label>
             <div className="mt-1 flex gap-1">
               <input
@@ -988,7 +1029,7 @@ export default function Editor() {
                 onClick={addCatalog}
                 className="rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-2 text-xs whitespace-nowrap"
               >
-                Añadir
+                {t.add}
               </button>
             </div>
             {catalogUrlList.length > 0 && (
@@ -1010,7 +1051,7 @@ export default function Editor() {
                           prev.filter((x) => x !== u)
                         )
                       }
-                      title="Quitar catálogo"
+                      title={t.removeCatalog}
                       className="text-neutral-500 hover:text-white text-xs"
                     >
                       ✕
@@ -1021,12 +1062,12 @@ export default function Editor() {
             )}
             {catalogUrlList.length > 1 && (
               <p className="mt-1 text-[11px] text-neutral-600">
-                Los catálogos se mezclan intercalados en el mosaico.
+                {t.catalogsMixed}
               </p>
             )}
             <div className="mt-2 flex items-center gap-2">
               <label className="text-[11px] text-neutral-500 whitespace-nowrap">
-                Máx. títulos
+                {t.maxTitles}
               </label>
               <input
                 type="number"
@@ -1045,7 +1086,7 @@ export default function Editor() {
                 onClick={() => loadCatalog()}
                 className="flex-1 rounded bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs font-medium"
               >
-                {catalogLoading ? "Cargando…" : "Cargar y previsualizar"}
+                {catalogLoading ? t.loading : t.loadPreview}
               </button>
             </div>
             {catalogError && (
@@ -1056,17 +1097,9 @@ export default function Editor() {
               onClick={() => copy("catalog", buildApiUrl("catalog"))}
               className="mt-2 w-full rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-2 text-xs"
             >
-              {copied === "catalog"
-                ? "¡Copiada!"
-                : "Copiar URL de imagen dinámica"}
+              {copied === "catalog" ? t.copied : t.copyDynamic}
             </button>
-            <p className="mt-1 text-[11px] text-neutral-600">
-              &quot;Cargar&quot; trae los títulos a la colección con arte limpio de
-              TMDB para previsualizar y retocar. La URL dinámica conserva tus
-              ajustes, los títulos que quites y los que añadas a mano, y se
-              regenera en cada visita: si el catálogo cambia, el fondo se
-              actualiza solo.
-            </p>
+            <p className="mt-1 text-[11px] text-neutral-600">{t.catalogHelp}</p>
           </div>
         </aside>
 
@@ -1102,12 +1135,12 @@ export default function Editor() {
               disabled={mode === "cover" ? !coverItem : imagePaths.length === 0}
               title={
                 (mode === "cover" ? !coverItem : imagePaths.length === 0)
-                  ? "Añade contenido primero"
+                  ? t.addContentFirst
                   : undefined
               }
               className="rounded bg-violet-600 text-white px-4 py-2 text-sm font-medium hover:bg-violet-500 disabled:opacity-40"
             >
-              Descargar PNG
+              {t.downloadPng}
             </button>
             {mode === "cover" ? (
               <button
@@ -1119,7 +1152,7 @@ export default function Editor() {
                 }
                 className="rounded bg-neutral-800 px-4 py-2 text-sm hover:bg-neutral-700 disabled:opacity-40"
               >
-                {copied === "cover" ? "¡Copiada!" : "Copiar URL de API"}
+                {copied === "cover" ? t.copied : t.copyApiUrl}
               </button>
             ) : (
               <button
@@ -1127,7 +1160,7 @@ export default function Editor() {
                 disabled={imagePaths.length === 0}
                 className="rounded bg-neutral-800 px-4 py-2 text-sm hover:bg-neutral-700 disabled:opacity-40"
               >
-                {copied === "imgs" ? "¡Copiada!" : "Copiar URL de API"}
+                {copied === "imgs" ? t.copied : t.copyApiUrl}
               </button>
             )}
           </div>
@@ -1139,13 +1172,13 @@ export default function Editor() {
             <>
               <div>
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Fondo
+                  {t.background}
                 </label>
                 <div className="mt-1 flex gap-1">
                   {(
                     [
-                      ["top", "Nº del top"],
-                      ["fixed", "Título fijo"],
+                      ["top", t.topNum],
+                      ["fixed", t.fixedTitle],
                     ] as const
                   ).map(([s, label]) => (
                     <button
@@ -1164,7 +1197,7 @@ export default function Editor() {
                 {coverSource === "top" ? (
                   <div className="mt-2 flex items-center gap-2">
                     <label className="text-[11px] text-neutral-500 whitespace-nowrap">
-                      Posición en el top
+                      {t.positionInTop}
                     </label>
                     <input
                       type="number"
@@ -1181,7 +1214,7 @@ export default function Editor() {
                   </div>
                 ) : items.length === 0 ? (
                   <p className="mt-2 text-[11px] text-neutral-600">
-                    Añade títulos a la colección para elegir uno.
+                    {t.addToPick}
                   </p>
                 ) : (
                   <div className="mt-2 grid grid-cols-4 gap-2">
@@ -1215,34 +1248,34 @@ export default function Editor() {
                 )}
                 {coverItem && (
                   <p className="mt-2 text-[11px] text-neutral-500 truncate">
-                    Fondo: {coverItem.title}
+                    {t.background}: {coverItem.title}
                   </p>
                 )}
               </div>
 
               <div>
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Tipo de imagen
+                  {t.imageType}
                 </label>
                 <div className="mt-1 flex gap-1">
-                  {(["poster", "backdrop"] as const).map((t) => (
+                  {(["poster", "backdrop"] as const).map((ty) => (
                     <button
-                      key={t}
+                      key={ty}
                       onClick={() => {
-                        setCoverType(t);
+                        setCoverType(ty);
                         setCoverCfg((c) => ({
                           ...c,
-                          width: t === "poster" ? 1000 : 1920,
-                          height: t === "poster" ? 1500 : 1080,
+                          width: ty === "poster" ? 1000 : 1920,
+                          height: ty === "poster" ? 1500 : 1080,
                         }));
                       }}
                       className={`flex-1 rounded px-2 py-1.5 text-sm border ${
-                        coverType === t
+                        coverType === ty
                           ? "border-violet-500 bg-violet-500/10"
                           : "border-neutral-800 hover:border-neutral-600"
                       }`}
                     >
-                      {t === "poster" ? "Poster" : "Backdrop"}
+                      {ty === "poster" ? "Poster" : "Backdrop"}
                     </button>
                   ))}
                 </div>
@@ -1253,13 +1286,13 @@ export default function Editor() {
                     onChange={(e) => setNoText(e.target.checked)}
                     className="accent-violet-500"
                   />
-                  Arte sin texto (textless)
+                  {t.textlessArt}
                 </label>
               </div>
 
               <div>
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Resolución
+                  {t.resolution}
                 </label>
                 <select
                   value={`${coverCfg.width}x${coverCfg.height}`}
@@ -1269,12 +1302,12 @@ export default function Editor() {
                   }}
                   className="mt-1 w-full rounded bg-neutral-900 border border-neutral-700 px-2 py-2 text-sm"
                 >
-                  {COVER_RESOLUTIONS.map((r) => (
+                  {COVER_RES.map((r) => (
                     <option key={r.label} value={`${r.w}x${r.h}`}>
                       {r.label}
                     </option>
                   ))}
-                  {!COVER_RESOLUTIONS.some(
+                  {!COVER_RES.some(
                     (r) => r.w === coverCfg.width && r.h === coverCfg.height
                   ) && (
                     <option value={`${coverCfg.width}x${coverCfg.height}`}>
@@ -1284,29 +1317,30 @@ export default function Editor() {
                 </select>
               </div>
 
-              <Slider label="Zoom fondo" value={coverCfg.bgScale} min={1} max={2} step={0.05} onChange={(v) => setCover("bgScale", v)} />
-              <Slider label="Oscurecer" value={coverCfg.darken} min={0} max={1} step={0.05} onChange={(v) => setCover("darken", v)} />
-              <Slider label="Viñeta" value={coverCfg.vignette} min={0} max={1} step={0.05} onChange={(v) => setCover("vignette", v)} />
-              <Slider label="Fade inferior" value={coverCfg.bottomFade} min={0} max={1} step={0.05} onChange={(v) => setCover("bottomFade", v)} />
+              <Slider label={t.bgZoom} value={coverCfg.bgScale} min={1} max={2} step={0.05} onChange={(v) => setCover("bgScale", v)} />
+              <Slider label={t.darken} value={coverCfg.darken} min={0} max={1} step={0.05} onChange={(v) => setCover("darken", v)} />
+              <Slider label={t.vignette} value={coverCfg.vignette} min={0} max={1} step={0.05} onChange={(v) => setCover("vignette", v)} />
+              <Slider label={t.bottomFade} value={coverCfg.bottomFade} min={0} max={1} step={0.05} onChange={(v) => setCover("bottomFade", v)} />
 
               <ColorField
-                label="Color de fondo"
+                t={t}
+                label={t.bgColor}
                 value={coverCfg.bgColor}
                 onChange={(v) => setCover("bgColor", v)}
               />
 
               <div className="border-t border-neutral-800 pt-4">
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Placa del logo
+                  {t.logoPlate}
                 </label>
                 <div className="mt-1 grid grid-cols-3 gap-1">
                   {(
                     [
-                      ["none", "Ninguna"],
-                      ["top", "Arriba"],
-                      ["bottom", "Abajo"],
-                      ["left", "Izquierda"],
-                      ["right", "Derecha"],
+                      ["none", t.plateNone],
+                      ["top", t.plateTop],
+                      ["bottom", t.plateBottom],
+                      ["left", t.plateLeft],
+                      ["right", t.plateRight],
                     ] as const
                   ).map(([v, label]) => (
                     <button
@@ -1325,30 +1359,31 @@ export default function Editor() {
                 {coverCfg.plate !== "none" && (
                   <div className="mt-3 space-y-3">
                     <ColorField
-                      label="Color de placa"
+                      t={t}
+                      label={t.plateColor}
                       value={coverCfg.plateColor}
                       onChange={(v) => setCover("plateColor", v)}
                     />
-                    <Slider label="Opacidad" value={coverCfg.plateOpacity} min={0} max={1} step={0.05} onChange={(v) => setCover("plateOpacity", v)} />
-                    <Slider label="Grosor" value={coverCfg.plateSize} min={0} max={1} step={0.01} onChange={(v) => setCover("plateSize", v)} />
+                    <Slider label={t.opacity} value={coverCfg.plateOpacity} min={0} max={1} step={0.05} onChange={(v) => setCover("plateOpacity", v)} />
+                    <Slider label={t.thickness} value={coverCfg.plateSize} min={0} max={1} step={0.01} onChange={(v) => setCover("plateSize", v)} />
                     {(coverCfg.plate === "left" ||
                       coverCfg.plate === "right") && (
-                      <Slider label="Inclinación" value={coverCfg.plateSlant} min={-0.5} max={0.5} step={0.01} onChange={(v) => setCover("plateSlant", v)} />
+                      <Slider label={t.slant} value={coverCfg.plateSlant} min={-0.5} max={0.5} step={0.01} onChange={(v) => setCover("plateSlant", v)} />
                     )}
-                    <Slider label="Fade del borde" value={coverCfg.plateFade} min={0} max={1} step={0.05} onChange={(v) => setCover("plateFade", v)} />
-                    <Slider label="Blur del fondo" value={coverCfg.plateBlur} min={0} max={40} step={1} onChange={(v) => setCover("plateBlur", v)} suffix="px" />
+                    <Slider label={t.edgeFade} value={coverCfg.plateFade} min={0} max={1} step={0.05} onChange={(v) => setCover("plateFade", v)} />
+                    <Slider label={t.bgBlur} value={coverCfg.plateBlur} min={0} max={40} step={1} onChange={(v) => setCover("plateBlur", v)} suffix="px" />
                   </div>
                 )}
               </div>
 
               <div className="border-t border-neutral-800 pt-4">
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Logo (PNG)
+                  {t.logoPng}
                 </label>
                 <input
                   value={logoQuery}
                   onChange={(e) => setLogoQuery(e.target.value)}
-                  placeholder="Buscar plataforma (Netflix, Max…)"
+                  placeholder={t.searchPlatform}
                   className="mt-1 w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
                 />
                 {logoResults.length > 0 && (
@@ -1380,7 +1415,7 @@ export default function Editor() {
                 <input
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="…o URL pública del logo (PNG)"
+                  placeholder={t.orLogoUrl}
                   className="mt-2 w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
                 />
                 {logoUrl.trim() && (
@@ -1388,30 +1423,30 @@ export default function Editor() {
                     onClick={() => setLogoUrl("")}
                     className="mt-2 text-xs text-neutral-400 hover:text-white"
                   >
-                    Quitar logo
+                    {t.removeLogo}
                   </button>
                 )}
-                <Slider label="Tamaño logo" value={coverCfg.logoScale} min={0.1} max={1} step={0.02} onChange={(v) => setCover("logoScale", v)} />
-                <Slider label="Logo X" value={coverCfg.logoX} min={0} max={1} step={0.01} onChange={(v) => setCover("logoX", v)} />
-                <Slider label="Logo Y" value={coverCfg.logoY} min={0} max={1} step={0.01} onChange={(v) => setCover("logoY", v)} />
-                <Slider label="Rotación logo" value={coverCfg.logoAngle} min={-180} max={180} step={1} onChange={(v) => setCover("logoAngle", v)} suffix="°" />
+                <Slider label={t.logoSize} value={coverCfg.logoScale} min={0.1} max={1} step={0.02} onChange={(v) => setCover("logoScale", v)} />
+                <Slider label={t.logoX} value={coverCfg.logoX} min={0} max={1} step={0.01} onChange={(v) => setCover("logoX", v)} />
+                <Slider label={t.logoY} value={coverCfg.logoY} min={0} max={1} step={0.01} onChange={(v) => setCover("logoY", v)} />
+                <Slider label={t.logoRotation} value={coverCfg.logoAngle} min={-180} max={180} step={1} onChange={(v) => setCover("logoAngle", v)} suffix="°" />
               </div>
 
               <div className="border-t border-neutral-800 pt-4">
                 <label className="text-xs uppercase tracking-wide text-neutral-500">
-                  Texto (p. ej. género)
+                  {t.textLabel}
                 </label>
                 <input
                   value={coverCfg.text}
                   onChange={(e) => setCover("text", e.target.value)}
-                  placeholder="Acción, Comedia, Top películas…"
+                  placeholder={t.textPlaceholder}
                   className="mt-1 w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-sm outline-none focus:border-violet-500"
                 />
                 {coverCfg.text.trim() && (
                   <div className="mt-3 space-y-3">
                     <div>
                       <label className="text-[11px] text-neutral-500">
-                        Fuente
+                        {t.font}
                       </label>
                       <select
                         value={coverCfg.textFont}
@@ -1427,7 +1462,8 @@ export default function Editor() {
                       </select>
                     </div>
                     <ColorField
-                      label="Color de texto"
+                      t={t}
+                      label={t.textColor}
                       value={coverCfg.textColor}
                       onChange={(v) => setCover("textColor", v)}
                     />
@@ -1438,13 +1474,13 @@ export default function Editor() {
                         onChange={(e) => setCover("textBold", e.target.checked)}
                         className="accent-violet-500"
                       />
-                      Negrita
+                      {t.bold}
                     </label>
-                    <Slider label="Tamaño texto" value={coverCfg.textSize} min={0.03} max={0.4} step={0.01} onChange={(v) => setCover("textSize", v)} />
-                    <Slider label="Texto X" value={coverCfg.textX} min={0} max={1} step={0.01} onChange={(v) => setCover("textX", v)} />
-                    <Slider label="Texto Y" value={coverCfg.textY} min={0} max={1} step={0.01} onChange={(v) => setCover("textY", v)} />
-                    <Slider label="Rotación texto" value={coverCfg.textAngle} min={-180} max={180} step={1} onChange={(v) => setCover("textAngle", v)} suffix="°" />
-                    <Slider label="Sombra" value={coverCfg.textShadow} min={0} max={1} step={0.05} onChange={(v) => setCover("textShadow", v)} />
+                    <Slider label={t.textSize} value={coverCfg.textSize} min={0.03} max={0.4} step={0.01} onChange={(v) => setCover("textSize", v)} />
+                    <Slider label={t.textX} value={coverCfg.textX} min={0} max={1} step={0.01} onChange={(v) => setCover("textX", v)} />
+                    <Slider label={t.textY} value={coverCfg.textY} min={0} max={1} step={0.01} onChange={(v) => setCover("textY", v)} />
+                    <Slider label={t.textRotation} value={coverCfg.textAngle} min={-180} max={180} step={1} onChange={(v) => setCover("textAngle", v)} suffix="°" />
+                    <Slider label={t.shadow} value={coverCfg.textShadow} min={0} max={1} step={0.05} onChange={(v) => setCover("textShadow", v)} />
                   </div>
                 )}
               </div>
@@ -1453,10 +1489,10 @@ export default function Editor() {
             <>
           <div>
             <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Preset
+              {t.preset}
             </label>
             <div className="mt-1 grid gap-1">
-              {Object.entries(PRESETS).map(([name, p]) => (
+              {Object.keys(PRESETS).map((name) => (
                 <button
                   key={name}
                   onClick={() => applyPreset(name)}
@@ -1466,7 +1502,7 @@ export default function Editor() {
                       : "border-neutral-800 hover:border-neutral-600"
                   }`}
                 >
-                  {p.label}
+                  {presetLabel(t, name)}
                 </button>
               ))}
             </div>
@@ -1474,20 +1510,20 @@ export default function Editor() {
 
           <div>
             <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Tipo de imagen
+              {t.imageType}
             </label>
             <div className="mt-1 flex gap-1">
-              {(["poster", "backdrop"] as const).map((t) => (
+              {(["poster", "backdrop"] as const).map((ty) => (
                 <button
-                  key={t}
-                  onClick={() => set("imageType", t)}
+                  key={ty}
+                  onClick={() => set("imageType", ty)}
                   className={`flex-1 rounded px-2 py-1.5 text-sm border ${
-                    config.imageType === t
+                    config.imageType === ty
                       ? "border-violet-500 bg-violet-500/10"
                       : "border-neutral-800 hover:border-neutral-600"
                   }`}
                 >
-                  {t === "poster" ? "Posters" : "Backdrops"}
+                  {ty === "poster" ? t.posters : t.backdrops}
                 </button>
               ))}
             </div>
@@ -1495,7 +1531,7 @@ export default function Editor() {
 
           <div>
             <label className="text-xs uppercase tracking-wide text-neutral-500">
-              Resolución
+              {t.resolution}
             </label>
             <select
               value={`${config.width}x${config.height}`}
@@ -1505,12 +1541,12 @@ export default function Editor() {
               }}
               className="mt-1 w-full rounded bg-neutral-900 border border-neutral-700 px-2 py-2 text-sm"
             >
-              {RESOLUTIONS.map((r) => (
+              {RES.map((r) => (
                 <option key={r.label} value={`${r.w}x${r.h}`}>
                   {r.label}
                 </option>
               ))}
-              {!RESOLUTIONS.some(
+              {!RES.some(
                 (r) => r.w === config.width && r.h === config.height
               ) && (
                 <option value={`${config.width}x${config.height}`}>
@@ -1520,18 +1556,19 @@ export default function Editor() {
             </select>
           </div>
 
-          <Slider label="Columnas" value={config.cols} min={3} max={14} step={1} onChange={(v) => set("cols", v)} />
-          <Slider label="Separación" value={config.gap} min={0} max={40} step={1} onChange={(v) => set("gap", v)} />
-          <Slider label="Rotación" value={config.rotation} min={-30} max={30} step={1} onChange={(v) => set("rotation", v)} suffix="°" />
-          <Slider label="Escalonado" value={config.stagger} min={0} max={1} step={0.05} onChange={(v) => set("stagger", v)} />
-          <Slider label="Esquinas" value={config.cornerRadius} min={0} max={30} step={1} onChange={(v) => set("cornerRadius", v)} />
-          <Slider label="Zoom" value={config.scale} min={0.8} max={1.8} step={0.05} onChange={(v) => set("scale", v)} />
-          <Slider label="Oscurecer" value={config.darken} min={0} max={1} step={0.05} onChange={(v) => set("darken", v)} />
-          <Slider label="Viñeta" value={config.vignette} min={0} max={1} step={0.05} onChange={(v) => set("vignette", v)} />
-          <Slider label="Fade inferior" value={config.bottomFade} min={0} max={1} step={0.05} onChange={(v) => set("bottomFade", v)} />
+          <Slider label={t.columns} value={config.cols} min={3} max={14} step={1} onChange={(v) => set("cols", v)} />
+          <Slider label={t.gap} value={config.gap} min={0} max={40} step={1} onChange={(v) => set("gap", v)} />
+          <Slider label={t.rotation} value={config.rotation} min={-30} max={30} step={1} onChange={(v) => set("rotation", v)} suffix="°" />
+          <Slider label={t.stagger} value={config.stagger} min={0} max={1} step={0.05} onChange={(v) => set("stagger", v)} />
+          <Slider label={t.corners} value={config.cornerRadius} min={0} max={30} step={1} onChange={(v) => set("cornerRadius", v)} />
+          <Slider label={t.zoom} value={config.scale} min={0.8} max={1.8} step={0.05} onChange={(v) => set("scale", v)} />
+          <Slider label={t.darken} value={config.darken} min={0} max={1} step={0.05} onChange={(v) => set("darken", v)} />
+          <Slider label={t.vignette} value={config.vignette} min={0} max={1} step={0.05} onChange={(v) => set("vignette", v)} />
+          <Slider label={t.bottomFade} value={config.bottomFade} min={0} max={1} step={0.05} onChange={(v) => set("bottomFade", v)} />
 
           <ColorField
-            label="Color de fondo"
+            t={t}
+            label={t.bgColor}
             value={config.bgColor}
             onChange={(v) => set("bgColor", v)}
           />
@@ -1541,7 +1578,7 @@ export default function Editor() {
       </main>
       {copied && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-full bg-neutral-800 border border-neutral-700 px-4 py-2 text-xs shadow-lg">
-          URL copiada al portapapeles
+          {t.urlCopied}
         </div>
       )}
     </div>
@@ -1648,10 +1685,12 @@ function ColorField({
   label,
   value,
   onChange,
+  t,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  t: Dict;
 }) {
   const [open, setOpen] = useState(false);
   const [hexDraft, setHexDraft] = useState(value);
@@ -1715,7 +1754,7 @@ function ColorField({
       cap.height = video.videoHeight;
       cap.getContext("2d")?.drawImage(video, 0, 0);
       // La captura ya está congelada: se corta la compartición al instante
-      stream.getTracks().forEach((t) => t.stop());
+      stream.getTracks().forEach((track) => track.stop());
       shotCanvasRef.current = cap;
       setShot(cap.toDataURL());
     } catch {
@@ -1902,7 +1941,7 @@ function ColorField({
             />
             <button
               onClick={startPick}
-              title="Cuentagotas: elegir un color del preview"
+              title={t.eyedropperTitle}
               className={`shrink-0 rounded border p-1.5 ${
                 picking
                   ? "border-violet-500 text-violet-400"
@@ -1927,7 +1966,7 @@ function ColorField({
           </div>
           {picking && (
             <p className="text-[11px] text-violet-400">
-              Elige qué pantalla, ventana o pestaña compartir…
+              {t.eyedropperSharing}
             </p>
           )}
         </div>
@@ -1935,13 +1974,11 @@ function ColorField({
       {/* Overlay de captura: elegir el píxel sobre el fotograma congelado */}
       {shot && (
         <div className="fixed inset-0 z-[100] bg-black/85 flex flex-col items-center justify-center gap-3 p-6">
-          <p className="text-xs text-neutral-300">
-            Haz clic en la captura para tomar el color · Esc cancela
-          </p>
+          <p className="text-xs text-neutral-300">{t.shotHelp}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={shot}
-            alt="Captura de pantalla para elegir color"
+            alt={t.shotAlt}
             draggable={false}
             className="max-w-full max-h-[80vh] rounded border border-neutral-700 cursor-crosshair select-none"
             onMouseMove={(e) => {
@@ -1959,7 +1996,7 @@ function ColorField({
             onClick={closeShot}
             className="rounded bg-neutral-800 hover:bg-neutral-700 px-4 py-1.5 text-xs"
           >
-            Cancelar
+            {t.cancel}
           </button>
           {loupe && (
             <div
