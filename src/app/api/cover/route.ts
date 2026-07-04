@@ -25,6 +25,25 @@ async function fetchImage(url: string): Promise<Image> {
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
+
+  // Si se envía PNG pre-renderizado del navegador, devolverlo directamente
+  const rendered = params.get("rendered");
+  if (rendered && rendered.startsWith("data:image/png;base64,")) {
+    try {
+      const base64 = rendered.slice("data:image/png;base64,".length);
+      const buffer = Buffer.from(base64, "base64");
+      return new NextResponse(buffer, {
+        headers: {
+          "Content-Type": "image/png",
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      });
+    } catch (err) {
+      console.error("Error decoding rendered PNG:", err);
+      // Continuar con renderizado del servidor como fallback
+    }
+  }
+
   const cfg = coverConfigFromParams(params);
   const type = params.get("type") === "backdrop" ? "backdrop" : "poster";
 
