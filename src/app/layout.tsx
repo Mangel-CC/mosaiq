@@ -94,6 +94,21 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Fuentes para el texto de las portadas: las mismas que empaqueta el
+            servidor (src/assets/fonts), para que el preview coincida con la
+            imagen que genera /api/cover */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;700&family=Roboto:wght@400;700&display=swap"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <script
           type="application/ld+json"

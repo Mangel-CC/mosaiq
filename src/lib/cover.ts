@@ -67,7 +67,7 @@ export const DEFAULT_COVER_CONFIG: CoverConfig = {
   logoY: 0.78,
   logoAngle: 0,
   text: "",
-  textFont: "sans-serif",
+  textFont: "Poppins",
   textColor: "#ffffff",
   textBold: true,
   textSize: 0.14,

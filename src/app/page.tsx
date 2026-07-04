@@ -33,11 +33,15 @@ const COVER_RESOLUTIONS = [
   { label: "1000 × 1000 (cuadrada)", w: 1000, h: 1000 },
 ];
 
-// Fuentes disponibles en Vercel
+// Fuentes empaquetadas (src/assets/fonts). Se cargan en el navegador (layout)
+// y en el servidor (serverFonts), así el preview coincide con la API.
 const TEXT_FONTS = [
-  "sans-serif",
-  "serif",
-  "monospace",
+  "Poppins",
+  "Roboto",
+  "Oswald",
+  "Playfair Display",
+  "Bebas Neue",
+  "Anton",
 ];
 
 const RESOLUTIONS = [
@@ -535,7 +539,7 @@ export default function Editor() {
     return `${window.location.origin}/api/render?${p.toString()}`;
   };
 
-  const buildCoverApiUrl = (includeRendered = false) => {
+  const buildCoverApiUrl = () => {
     const p = coverConfigToParams(coverCfg);
     p.set("type", coverType);
     if (coverSource === "top" && catalogUrlList.length > 0) {
@@ -554,12 +558,6 @@ export default function Editor() {
     if (noText) p.set("notext", "1");
     if (logoUrl.trim()) p.set("logo", logoUrl.trim());
     if (accessKey.trim()) p.set("key", accessKey.trim());
-
-    // Si se solicita incluir el PNG pre-renderizado del navegador
-    if (includeRendered && canvasRef.current) {
-      p.set("rendered", canvasRef.current.toDataURL("image/png"));
-    }
-
     return `${window.location.origin}/api/cover?${p.toString()}`;
   };
 
@@ -1130,20 +1128,6 @@ export default function Editor() {
                 className="rounded bg-neutral-800 px-4 py-2 text-sm hover:bg-neutral-700 disabled:opacity-40"
               >
                 {copied === "imgs" ? "¡Copiada!" : "Copiar URL de API"}
-              </button>
-            )}
-            {mode === "cover" && (
-              <button
-                onClick={() => copy("cover-rendered", buildCoverApiUrl(true))}
-                disabled={
-                  coverSource === "top"
-                    ? catalogUrlList.length === 0
-                    : !coverItem
-                }
-                title="Envía la portada pre-renderizada del navegador (con texto incluido)"
-                className="rounded bg-violet-700 px-4 py-2 text-sm hover:bg-violet-600 disabled:opacity-40"
-              >
-                {copied === "cover-rendered" ? "¡Copiada!" : "URL con imagen renderizada"}
               </button>
             )}
           </div>
