@@ -33,16 +33,23 @@ const COVER_RESOLUTIONS = [
   { label: "1000 × 1000 (cuadrada)", w: 1000, h: 1000 },
 ];
 
-// Fuentes disponibles en el servidor (compatibles con API)
+// Fuentes de Google Fonts (se cargan dinámicamente en el servidor)
 const TEXT_FONTS = [
   "sans-serif",
   "serif",
   "monospace",
-  "DejaVu Sans",
-  "DejaVu Serif",
-  "Liberation Sans",
-  "Liberation Serif",
-  "Noto Sans",
+  "Roboto",
+  "Open Sans",
+  "Lato",
+  "Montserrat",
+  "Inter",
+  "Raleway",
+  "Ubuntu",
+  "Poppins",
+  "Playfair Display",
+  "Merriweather",
+  "Courier Prime",
+  "IBM Plex Mono",
 ];
 
 const RESOLUTIONS = [

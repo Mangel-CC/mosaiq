@@ -3,6 +3,7 @@ import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
 import { coverConfigFromParams, renderCover } from "@/lib/cover";
 import { resolveCatalogs } from "@/lib/catalog";
 import { fetchTextlessArt, resolveTmdbRef } from "@/lib/tmdb";
+import { ensureFontLoaded } from "@/lib/fonts";
 
 // Genera la portada como PNG en el servidor. Fondo:
 //   ?catalog=<url>&pick=1&type=poster|backdrop → título nº `pick` del top
@@ -87,6 +88,11 @@ export async function GET(req: NextRequest) {
     const bg = await fetchImage(bgUrl);
     const logoUrl = params.get("logo");
     const logo = logoUrl ? await fetchImage(logoUrl) : null;
+
+    // Asegurar que la fuente está cargada (descargar de Google Fonts si es necesario)
+    if (cfg.text.trim() && !["sans-serif", "serif", "monospace"].includes(cfg.textFont)) {
+      await ensureFontLoaded(cfg.textFont);
+    }
 
     const canvas = createCanvas(cfg.width, cfg.height);
     const ctx = canvas.getContext("2d") as unknown as CanvasRenderingContext2D;

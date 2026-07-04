@@ -240,9 +240,7 @@ export function renderCover(
   }
 
   // ---- Texto (p. ej. nombre de género) ----
-  // Solo renderizar texto si usa una fuente disponible en el servidor
-  const isWebOnlyFont = /arial|georgia|trebuchet|verdana|impact|courier new/i.test(cfg.textFont.toLowerCase());
-  if (cfg.text.trim() && !isWebOnlyFont) {
+  if (cfg.text.trim()) {
     ctx.save();
     ctx.translate(w * cfg.textX, h * cfg.textY);
     ctx.rotate((cfg.textAngle * Math.PI) / 180);
