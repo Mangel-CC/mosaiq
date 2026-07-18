@@ -274,6 +274,18 @@ export default function Editor() {
     setActiveCreationId(null);
   };
 
+  // Añade el token de perfil a una URL de la API para que use la credencial
+  // TMDB personal registrada bajo ese token (specs/001-tmdb-byo-key) en vez
+  // de la key compartida del servidor — mismo patrón que withKey.
+  const withTmdbToken = useCallback(
+    (url: string) => {
+      const tok = profileToken.trim();
+      if (!tok) return url;
+      return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(tok)}`;
+    },
+    [profileToken]
+  );
+
   const saveCredentials = async () => {
     const tmdbKey = newTmdbKey.trim();
     const imagekitKey = newImagekitKey.trim();
@@ -405,7 +417,7 @@ export default function Editor() {
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          withKey(`/api/search?q=${encodeURIComponent(query)}`)
+          withTmdbToken(withKey(`/api/search?q=${encodeURIComponent(query)}`))
         );
         const data = await res.json();
         if (data.error) setSearchError(data.error);
@@ -420,7 +432,7 @@ export default function Editor() {
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [query, withKey, t]);
+  }, [query, withKey, withTmdbToken, t]);
 
   // Rutas de imagen según el tipo elegido
   const imagePaths = useMemo(
@@ -453,7 +465,7 @@ export default function Editor() {
     let cancelled = false;
     const q = new URLSearchParams({ id: String(coverItem.id) });
     if (coverItem.mediaType !== "catalog") q.set("media", coverItem.mediaType);
-    fetch(withKey(`/api/art?${q.toString()}`))
+    fetch(withTmdbToken(withKey(`/api/art?${q.toString()}`)))
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
@@ -465,7 +477,7 @@ export default function Editor() {
     return () => {
       cancelled = true;
     };
-  }, [noText, mode, coverItem, withKey]);
+  }, [noText, mode, coverItem, withKey, withTmdbToken]);
 
   // Búsqueda de plataformas con debounce
   useEffect(() => {
@@ -476,7 +488,7 @@ export default function Editor() {
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          withKey(`/api/providers?q=${encodeURIComponent(logoQuery)}`)
+          withTmdbToken(withKey(`/api/providers?q=${encodeURIComponent(logoQuery)}`))
         );
         const data = await res.json();
         setLogoResults(data.results ?? []);
@@ -485,7 +497,7 @@ export default function Editor() {
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [logoQuery, withKey]);
+  }, [logoQuery, withKey, withTmdbToken]);
 
   const [isRendering, setIsRendering] = useState(false);
 
@@ -709,6 +721,7 @@ export default function Editor() {
       if (manual.length > 0) p.set("imgs", manual.join(","));
     }
     if (accessKey.trim()) p.set("key", accessKey.trim());
+    if (profileToken.trim()) p.set("token", profileToken.trim());
     return `${window.location.origin}/api/render?${p.toString()}`;
   };
 
@@ -731,6 +744,7 @@ export default function Editor() {
     if (noText) p.set("notext", "1");
     if (logoUrl.trim()) p.set("logo", logoUrl.trim());
     if (accessKey.trim()) p.set("key", accessKey.trim());
+    if (profileToken.trim()) p.set("token", profileToken.trim());
     return `${window.location.origin}/api/cover?${p.toString()}`;
   };
 

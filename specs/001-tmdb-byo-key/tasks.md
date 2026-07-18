@@ -23,7 +23,7 @@ Single project — `src/`, `tests/` at repository root.
 
 ## Phase 1: Setup
 
-- [ ] T001 Verify [003-user-profiles](../003-user-profiles/tasks.md) User Story 1 is implemented and its tests pass (`src/lib/profile.ts` exposes a working `getProfile`) — this feature's token path cannot proceed otherwise
+- [X] T001 Verify [003-user-profiles](../003-user-profiles/tasks.md) User Story 1 is implemented and its tests pass (`src/lib/profile.ts` exposes a working `getProfile`) — this feature's token path cannot proceed otherwise
 
 ---
 
@@ -33,12 +33,12 @@ Single project — `src/`, `tests/` at repository root.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Implement `resolveTmdbKey({ directKey?, token? }): Promise<{ key: string; source: "direct" | "token" | "server" }>` in `src/lib/tmdb.ts` (imports `getProfile` from `./profile`; precedence: direct > token > server, per data-model.md)
-- [ ] T003 Thread `resolveTmdbKey` through `tmdbFetch`, `fetchTextlessArt`, `resolveTmdbRef` in `src/lib/tmdb.ts`
-- [ ] T004 [P] Extend `resolveMeta`/`resolveCatalog`/`resolveCatalogs` in `src/lib/catalog.ts` to accept and forward `{ directKey?, token? }` to `lib/tmdb.ts`
-- [ ] T005 Add cache-bypass logic to `resolveCatalog`'s module-level cache in `src/lib/catalog.ts` — skip read/write whenever resolution `source !== "server"` (research.md Decision 4)
-- [ ] T006 [P] Add the same cache-bypass logic to `src/app/api/providers/route.ts`'s module-level cache
-- [ ] T007 Remove the duplicate inline `tmdbAuth()` from `src/app/api/search/route.ts`; replace with `resolveTmdbKey` via `lib/tmdb.ts` (research.md Decision 3 codebase finding)
+- [X] T002 Implement `resolveTmdbKey({ directKey?, token? }): Promise<{ key: string; source: "direct" | "token" | "server" }>` in `src/lib/tmdb.ts` (imports `getProfile` from `./profile`; precedence: direct > token > server, per data-model.md)
+- [X] T003 Thread `resolveTmdbKey` through `tmdbFetch`, `fetchTextlessArt`, `resolveTmdbRef` in `src/lib/tmdb.ts`
+- [X] T004 [P] Extend `resolveMeta`/`resolveCatalog`/`resolveCatalogs` in `src/lib/catalog.ts` to accept and forward `{ directKey?, token? }` to `lib/tmdb.ts`
+- [X] T005 Add cache-bypass logic to `resolveCatalog`'s module-level cache in `src/lib/catalog.ts` — skip read/write whenever resolution `source !== "server"` (research.md Decision 4)
+- [X] T006 [P] Add the same cache-bypass logic to `src/app/api/providers/route.ts`'s module-level cache
+- [X] T007 Remove the duplicate inline `tmdbAuth()` from `src/app/api/search/route.ts`; replace with `resolveTmdbKey` via `lib/tmdb.ts` (research.md Decision 3 codebase finding)
 
 **Checkpoint**: Resolution logic ready — endpoint wiring can now begin
 
@@ -52,21 +52,21 @@ Single project — `src/`, `tests/` at repository root.
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Unit test: `resolveTmdbKey` precedence (direct > token > server), empty direct key treated as absent, unresolvable token fails open to server, in `tests/lib/tmdb.test.ts`
-- [ ] T009 [P] [US1] Unit test: cache bypass triggers in `resolveCatalog` whenever `source !== "server"`, in `tests/lib/catalog.test.ts`
-- [ ] T010 [P] [US1] Route test: `GET /api/search` honors `token`/`tmdb_key`, surfaces TMDB rejection without fallback, in `tests/api/search.test.ts`
-- [ ] T011 [P] [US1] Route test: `GET /api/art` honors `token`/`tmdb_key`, in `tests/api/art.test.ts`
-- [ ] T012 [P] [US1] Route test: `GET /api/providers` honors `token`/`tmdb_key` and bypasses its cache accordingly, in `tests/api/providers.test.ts`
-- [ ] T013 [P] [US1] Route test: `GET /api/render` honors `token`/`tmdb_key` for `catalog=` resolution, in `tests/api/render.test.ts`
-- [ ] T014 [P] [US1] Route test: `GET /api/cover` honors `token`/`tmdb_key` for `?notext=1` and `catalog=` resolution, in `tests/api/cover.test.ts`
+- [X] T008 [P] [US1] Unit test: `resolveTmdbKey` precedence (direct > token > server), empty direct key treated as absent, unresolvable token fails open to server, in `tests/lib/tmdb.test.ts`
+- [X] T009 [P] [US1] Unit test: cache bypass triggers in `resolveCatalog` whenever `source !== "server"`, in `tests/lib/catalog.test.ts`
+- [X] T010 [P] [US1] Route test: `GET /api/search` honors `token`/`tmdb_key`, surfaces TMDB rejection without fallback, in `tests/api/search.test.ts`
+- [X] T011 [P] [US1] Route test: `GET /api/art` honors `token`/`tmdb_key`, in `tests/api/art.test.ts`
+- [X] T012 [P] [US1] Route test: `GET /api/providers` honors `token`/`tmdb_key` and bypasses its cache accordingly, in `tests/api/providers.test.ts`
+- [X] T013 [P] [US1] Route test: `GET /api/render` honors `token`/`tmdb_key` for `catalog=` resolution, in `tests/api/render.test.ts`
+- [X] T014 [P] [US1] Route test: `GET /api/cover` honors `token`/`tmdb_key` for `?notext=1` and `catalog=` resolution, in `tests/api/cover.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Read `token`/`tmdb_key` query parameters and pass to `resolveTmdbKey`/`fetchTextlessArt`/`resolveTmdbRef` in `src/app/api/search/route.ts`
-- [ ] T016 [US1] Same wiring in `src/app/api/art/route.ts`
-- [ ] T017 [US1] Same wiring in `src/app/api/providers/route.ts`
-- [ ] T018 [US1] Same wiring in `src/app/api/render/route.ts`, passed through to `resolveCatalogs`
-- [ ] T019 [US1] Same wiring in `src/app/api/cover/route.ts`, passed through to `resolveTmdbRef`/`fetchTextlessArt`/`resolveCatalogs`
+- [X] T015 [US1] Read `token`/`tmdb_key` query parameters and pass to `resolveTmdbKey`/`fetchTextlessArt`/`resolveTmdbRef` in `src/app/api/search/route.ts`
+- [X] T016 [US1] Same wiring in `src/app/api/art/route.ts`
+- [X] T017 [US1] Same wiring in `src/app/api/providers/route.ts`
+- [X] T018 [US1] Same wiring in `src/app/api/render/route.ts`, passed through to `resolveCatalogs`
+- [X] T019 [US1] Same wiring in `src/app/api/cover/route.ts`, passed through to `resolveTmdbRef`/`fetchTextlessArt`/`resolveCatalogs`
 
 **Checkpoint**: User Story 1 fully functional and independently testable across all five endpoints
 
@@ -84,11 +84,11 @@ Single project — `src/`, `tests/` at repository root.
 
 *(No automated tests for `page.tsx` — this project has no component-testing infrastructure; validated manually via quickstart.md Scenario 7, consistent with how the rest of the Editor is tested today.)*
 
-- [ ] T020 [US2] Add a `tmdbToken` state + `localStorage` persistence in `src/app/page.tsx`, mirroring the existing `accessKey` pattern (load-once `useEffect`, save-on-change `useEffect`)
-- [ ] T021 [US2] Wire the TMDB-key input: on entry, call `POST /api/profile` (feature 003) with `{ token: <existing, if any>, tmdbKey: <entered value> }`, store only the returned token (never the raw key)
-- [ ] T022 [US2] Add a way to paste an existing token directly (skips the registration call), storing it the same way
-- [ ] T023 [US2] Add a `withTmdbToken`-style helper (mirroring `withKey`) that appends `&token=` to outgoing search/render/cover URLs, and wire it into the Editor's existing request-building code
-- [ ] T024 [US2] Add a "remove my TMDB credential" action that calls `DELETE /api/profile` with `{ token, service: "tmdb" }`
+- [X] T020 [US2] Add a `tmdbToken` state + `localStorage` persistence in `src/app/page.tsx`, mirroring the existing `accessKey` pattern (load-once `useEffect`, save-on-change `useEffect`)
+- [X] T021 [US2] Wire the TMDB-key input: on entry, call `POST /api/profile` (feature 003) with `{ token: <existing, if any>, tmdbKey: <entered value> }`, store only the returned token (never the raw key)
+- [X] T022 [US2] Add a way to paste an existing token directly (skips the registration call), storing it the same way
+- [X] T023 [US2] Add a `withTmdbToken`-style helper (mirroring `withKey`) that appends `&token=` to outgoing search/render/cover URLs, and wire it into the Editor's existing request-building code
+- [X] T024 [US2] Add a "remove my TMDB credential" action that calls `DELETE /api/profile` with `{ token, service: "tmdb" }`
 
 **Checkpoint**: User Stories 1 and 2 both independently functional
 
@@ -102,7 +102,7 @@ Single project — `src/`, `tests/` at repository root.
 
 ### Tests for User Story 3
 
-- [ ] T025 [P] [US3] Regression test: each of the five route test files (`tests/api/*.test.ts`) includes a case with no `token`/`tmdb_key` supplied, asserting output is byte-identical/behaviorally identical to the pre-feature baseline
+- [X] T025 [P] [US3] Regression test: each of the five route test files (`tests/api/*.test.ts`) includes a case with no `token`/`tmdb_key` supplied, asserting output is byte-identical/behaviorally identical to the pre-feature baseline
 
 **Checkpoint**: All three user stories independently functional
 
@@ -110,8 +110,8 @@ Single project — `src/`, `tests/` at repository root.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T026 [P] Document `token` and `tmdb_key` parameters in `README.md`'s "URL Structure" section (Constitution Principle III requirement)
-- [ ] T027 Run all `quickstart.md` scenarios (1-8) manually against a local dev server as final validation
+- [X] T026 [P] Document `token` and `tmdb_key` parameters in `README.md`'s "URL Structure" section (Constitution Principle III requirement)
+- [X] T027 Run all `quickstart.md` scenarios (1-8) manually against a local dev server as final validation — Scenarios 1, 4, 5 (backward compat, fail-open-to-server-key, invalid-credential rejection) validated directly against real TMDB; Scenarios 2/3/6 (which need a second real personal TMDB key not available in this environment) validated via the automated route tests' `expectedApiKey` assertions instead; Scenario 7 (Editor) validated by code review — it reuses feature 003's existing `profileToken` mechanism, storing only the token in `localStorage`, never the raw key; Scenario 8 (cache bypass) covered by `tests/lib/catalog.test.ts`
 
 ---
 

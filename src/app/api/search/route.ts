@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasTmdbKey, resolveTmdbKey, tmdbFetch } from "@/lib/tmdb";
 
 // Proxy de búsqueda de TMDB: la API key se queda en el servidor.
-
-const TMDB_BASE = "https://api.themoviedb.org/3";
-
-function tmdbAuth(url: URL): HeadersInit {
-  const key = process.env.TMDB_API_KEY ?? "";
-  // Los tokens v4 (JWT) empiezan por "ey" y van como Bearer; las keys v3
-  // van como query param.
-  if (key.startsWith("ey")) return { Authorization: `Bearer ${key}` };
-  url.searchParams.set("api_key", key);
-  return {};
-}
+//
+// Acepta ?token= (perfil de specs/003-user-profiles) o ?tmdb_key= (key
+// directa) para usar una credencial personal en vez de la compartida del
+// servidor — ver specs/001-tmdb-byo-key.
 
 export interface SearchItem {
   id: number;
@@ -23,21 +17,26 @@ export interface SearchItem {
 }
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q")?.trim();
+  const params = req.nextUrl.searchParams;
+  const q = params.get("q")?.trim();
   if (!q) return NextResponse.json({ results: [] });
-  if (!process.env.TMDB_API_KEY) {
+
+  const resolved = await resolveTmdbKey({
+    directKey: params.get("tmdb_key") ?? undefined,
+    token: params.get("token") ?? undefined,
+  });
+  if (!hasTmdbKey(resolved)) {
     return NextResponse.json(
       { error: "Falta TMDB_API_KEY en .env.local" },
       { status: 500 }
     );
   }
 
-  const url = new URL(`${TMDB_BASE}/search/multi`);
-  url.searchParams.set("query", q);
-  url.searchParams.set("include_adult", "false");
-  const headers = tmdbAuth(url);
-
-  const res = await fetch(url, { headers });
+  const res = await tmdbFetch(
+    "/search/multi",
+    { query: q, include_adult: "false" },
+    resolved
+  );
   if (!res.ok) {
     return NextResponse.json(
       { error: `TMDB respondió ${res.status}` },

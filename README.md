@@ -160,6 +160,8 @@ GET /api/render?preset=netflix&w=1920&h=1080&cols=8&imgs=/path1,/path2,/path3
 - `catalog` - URL to Stremio/Nuvio catalog (alternative to `imgs`)
 - `limit` - max catalog items to render
 - `key` - `ACCESS_KEY` if protected
+- `token` - profile token from [User Profiles](#user-profiles): uses that profile's personal TMDB key instead of the shared server key, if one is registered
+- `tmdb_key` - a raw personal TMDB key, used directly (secondary alternative to `token` — see below)
 
 **Example:**
 
@@ -173,7 +175,24 @@ GET /api/render?preset=netflix&w=1920&h=1080&cols=8&imgs=/path1,/path2,/path3
 GET /api/cover?w=1000&h=1500&type=poster&img=/path&logo=https://logo.png&text=Genre
 ```
 
-**Parameters:** width, height, poster/backdrop, background image, logo URL, text overlay, text styling.
+**Parameters:** width, height, poster/backdrop, background image, logo URL, text overlay, text styling. Also accepts `key`, `token`, and `tmdb_key` as above.
+
+### Bring your own TMDB key
+
+Every endpoint that talks to TMDB (`/api/search`, `/api/render`, `/api/cover`, `/api/art`,
+`/api/providers`) accepts an optional `token` or `tmdb_key` query parameter to use a personal
+TMDB credential instead of the server's shared one:
+
+- `token` - a UUID from [User Profiles](#user-profiles). **Recommended** for anything you'll
+  store persistently (e.g. a Nuvio collection URL) — only the opaque token travels in the URL,
+  never your raw key.
+- `tmdb_key` - your raw TMDB key, used directly. Only recommended for one-off/direct API use
+  (e.g. `curl` testing), not for anything saved outside mosaiq.
+
+If both are supplied, `tmdb_key` wins. If neither resolves to a usable credential (including an
+unknown/unregistered `token`), the request falls back to the server's `TMDB_API_KEY` unchanged —
+supplying a personal key is always optional. A credential that TMDB itself rejects (invalid,
+expired) returns a clear error instead of silently falling back to the server key.
 
 ---
 

@@ -31,6 +31,12 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const cfg = coverConfigFromParams(params);
   const type = params.get("type") === "backdrop" ? "backdrop" : "poster";
+  // Credencial TMDB personal opcional (specs/001-tmdb-byo-key): ?token= o
+  // ?tmdb_key=, en vez de la key compartida del servidor.
+  const keyInput = {
+    directKey: params.get("tmdb_key") ?? undefined,
+    token: params.get("token") ?? undefined,
+  };
 
   // ?notext=1 → intenta usar arte "textless" (sin título impreso) de TMDB
   const noText = params.get("notext") === "1";
@@ -43,9 +49,9 @@ export async function GET(req: NextRequest) {
     raw: string,
     hint?: "movie" | "tv"
   ): Promise<string | null> => {
-    const ref = await resolveTmdbRef(raw, hint);
+    const ref = await resolveTmdbRef(raw, hint, keyInput);
     if (!ref) return null;
-    const art = await fetchTextlessArt(ref.media, ref.id);
+    const art = await fetchTextlessArt(ref.media, ref.id, keyInput);
     return type === "backdrop"
       ? art.backdrop ?? art.poster
       : art.poster ?? art.backdrop;
@@ -62,7 +68,7 @@ export async function GET(req: NextRequest) {
       bgUrl = chosen.startsWith("/") ? tmdbImageUrl(chosen, type) : chosen;
     } else if (catalogs.length > 0) {
       const pick = Math.max(1, Number(params.get("pick")) || 1);
-      const items = await resolveCatalogs(catalogs, pick + 5);
+      const items = await resolveCatalogs(catalogs, pick + 5, [], keyInput);
       const item = items[pick - 1];
       if (!item) throw new Error(`El catálogo no tiene ${pick} títulos`);
       let path =

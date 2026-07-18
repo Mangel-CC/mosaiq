@@ -23,12 +23,13 @@ async function urlsFromCatalogs(
   catalogUrls: string[],
   type: "poster" | "backdrop",
   limit: number,
-  exclude: string[]
+  exclude: string[],
+  keyInput: { directKey?: string; token?: string }
 ): Promise<string[]> {
   // resolveCatalogs intenta obtener arte limpio de TMDB (sin etiquetas
   // superpuestas), mezcla los catálogos intercalados y devuelve paths de
   // TMDB o URLs absolutas de fallback.
-  const items = await resolveCatalogs(catalogUrls, limit, exclude);
+  const items = await resolveCatalogs(catalogUrls, limit, exclude, keyInput);
   return items
     .map((it) => (type === "backdrop" ? it.backdrop || it.poster : it.poster || it.backdrop))
     .filter((u): u is string => typeof u === "string" && u.length > 0)
@@ -38,6 +39,12 @@ async function urlsFromCatalogs(
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const cfg = configFromParams(params);
+  // Credencial TMDB personal opcional (specs/001-tmdb-byo-key): ?token= o
+  // ?tmdb_key=, en vez de la key compartida del servidor.
+  const keyInput = {
+    directKey: params.get("tmdb_key") ?? undefined,
+    token: params.get("token") ?? undefined,
+  };
 
   // catalog e imgs se pueden combinar: catálogo dinámico + títulos
   // añadidos a mano en el editor.
@@ -53,7 +60,13 @@ export async function GET(req: NextRequest) {
       const exclude = (params.get("exclude") ?? "")
         .split(",")
         .filter(Boolean);
-      urls = await urlsFromCatalogs(catalogs, cfg.imageType, limit, exclude);
+      urls = await urlsFromCatalogs(
+        catalogs,
+        cfg.imageType,
+        limit,
+        exclude,
+        keyInput
+      );
     }
     const imgs = params.get("imgs");
     if (imgs) {
