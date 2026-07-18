@@ -125,6 +125,39 @@ export interface Dict {
   resSquare: string;
   resVertical: string;
   resBanner: string;
+  // Perfil (token: credenciales propias + creaciones guardadas)
+  profileTitle: string;
+  profileTokenPlaceholder: string;
+  profileJoin: string;
+  profileOr: string;
+  profileTmdbKeyPlaceholder: string;
+  profileImagekitKeyPlaceholder: string;
+  profileCreate: string;
+  profileCopyToken: string;
+  profileForget: string;
+  profileForgetTitle: string;
+  profileHasTmdb: string;
+  profileNoTmdb: string;
+  profileHasImagekit: string;
+  profileNoImagekit: string;
+  profileRemoveCredential: string;
+  profileNotFound: string;
+  profileNetErr: string;
+  profileSaveErr: string;
+  profileWarningTitle: string;
+  profileWarningBody: string;
+  profileWarningConfirm: string;
+  profileCreationsTitle: string;
+  profileNoCreations: string;
+  profileSaveCurrentPlaceholder: string;
+  profileRenamePlaceholder: string;
+  profileSaveCurrent: string;
+  profileUpdateCurrent: string;
+  profileSaveAsNew: string;
+  profileLoadCreation: string;
+  profileRenameCreation: string;
+  profileDeleteCreation: string;
+  profileCopyCreationUrl: string;
 }
 
 const es: Dict = {
@@ -240,6 +273,39 @@ const es: Dict = {
   resSquare: "cuadrada",
   resVertical: "vertical",
   resBanner: "banner",
+  profileTitle: "Perfil (credenciales y creaciones guardadas)",
+  profileTokenPlaceholder: "Pega tu token existente…",
+  profileJoin: "Entrar",
+  profileOr: "…o crea uno nuevo con tu(s) key(s):",
+  profileTmdbKeyPlaceholder: "Tu TMDB API key (opcional)",
+  profileImagekitKeyPlaceholder: "Tu ImageKit private key (opcional)",
+  profileCreate: "Guardar",
+  profileCopyToken: "Copiar token",
+  profileForget: "Olvidar",
+  profileForgetTitle: "Salir de este perfil en este navegador",
+  profileHasTmdb: "TMDB ✓",
+  profileNoTmdb: "Sin TMDB",
+  profileHasImagekit: "ImageKit ✓",
+  profileNoImagekit: "Sin ImageKit",
+  profileRemoveCredential: "Quitar esta credencial",
+  profileNotFound: "Token no encontrado",
+  profileNetErr: "Error de red con el perfil",
+  profileSaveErr: "No se pudo guardar el perfil",
+  profileWarningTitle: "Guarda este token en un lugar seguro",
+  profileWarningBody:
+    "Es la única forma de volver a tus credenciales y creaciones guardadas. Si lo pierdes, no hay forma de recuperarlo: no hay email ni contraseña asociados.",
+  profileWarningConfirm: "Entendido, ya lo guardé",
+  profileCreationsTitle: "Creaciones guardadas",
+  profileNoCreations: "Aún no has guardado ninguna creación.",
+  profileSaveCurrentPlaceholder: "Nombre para esta creación…",
+  profileRenamePlaceholder: "Nuevo nombre (opcional)…",
+  profileSaveCurrent: "Guardar como creación",
+  profileUpdateCurrent: "Actualizar",
+  profileSaveAsNew: "Guardar como nueva en vez de actualizar",
+  profileLoadCreation: "Cargar esta creación en el editor",
+  profileRenameCreation: "Renombrar",
+  profileDeleteCreation: "Eliminar",
+  profileCopyCreationUrl: "Copiar URL de esta creación",
 };
 
 const en: Dict = {
@@ -353,6 +419,39 @@ const en: Dict = {
   resSquare: "square",
   resVertical: "vertical",
   resBanner: "banner",
+  profileTitle: "Profile (saved credentials & creations)",
+  profileTokenPlaceholder: "Paste your existing token…",
+  profileJoin: "Join",
+  profileOr: "…or create one with your key(s):",
+  profileTmdbKeyPlaceholder: "Your TMDB API key (optional)",
+  profileImagekitKeyPlaceholder: "Your ImageKit private key (optional)",
+  profileCreate: "Save",
+  profileCopyToken: "Copy token",
+  profileForget: "Forget",
+  profileForgetTitle: "Leave this profile on this browser",
+  profileHasTmdb: "TMDB ✓",
+  profileNoTmdb: "No TMDB",
+  profileHasImagekit: "ImageKit ✓",
+  profileNoImagekit: "No ImageKit",
+  profileRemoveCredential: "Remove this credential",
+  profileNotFound: "Token not found",
+  profileNetErr: "Network error with the profile",
+  profileSaveErr: "Couldn't save the profile",
+  profileWarningTitle: "Save this token somewhere safe",
+  profileWarningBody:
+    "It's the only way back into your saved credentials and creations. If you lose it, it can't be recovered — there's no email or password tied to it.",
+  profileWarningConfirm: "Got it, I saved it",
+  profileCreationsTitle: "Saved creations",
+  profileNoCreations: "You haven't saved any creation yet.",
+  profileSaveCurrentPlaceholder: "Name for this creation…",
+  profileRenamePlaceholder: "New name (optional)…",
+  profileSaveCurrent: "Save as creation",
+  profileUpdateCurrent: "Update",
+  profileSaveAsNew: "Save as new instead of updating",
+  profileLoadCreation: "Load this creation into the editor",
+  profileRenameCreation: "Rename",
+  profileDeleteCreation: "Delete",
+  profileCopyCreationUrl: "Copy this creation's URL",
 };
 
 export const translations: Record<Lang, Dict> = { es, en };

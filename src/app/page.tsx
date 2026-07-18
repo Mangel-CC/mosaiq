@@ -27,6 +27,19 @@ interface SearchItem {
   backdrop: string | null;
 }
 
+interface ProfileCreation {
+  id: string;
+  name: string;
+  type: "mosaic" | "cover";
+  updatedAt: number;
+}
+
+interface ProfileData {
+  hasTmdbKey: boolean;
+  hasImagekitKey: boolean;
+  creations: ProfileCreation[];
+}
+
 // Los descriptores (portada/cuadrada/…) se traducen; las medidas no.
 function coverResolutions(t: Dict) {
   const mk = (w: number, h: number, desc?: string) => ({
@@ -183,6 +196,131 @@ export default function Editor() {
     },
     [accessKey]
   );
+
+  // ---- Perfil (token opcional: credenciales propias + creaciones guardadas) ----
+  // Mismo patrón que accessKey: solo se guarda el token en localStorage,
+  // nunca las keys crudas (ver specs/003-user-profiles).
+  const [profileToken, setProfileToken] = useState("");
+  const [profileTokenInput, setProfileTokenInput] = useState("");
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [newTmdbKey, setNewTmdbKey] = useState("");
+  const [newImagekitKey, setNewImagekitKey] = useState("");
+  const [showTokenWarning, setShowTokenWarning] = useState(false);
+  const [creationName, setCreationName] = useState("");
+  const [activeCreationId, setActiveCreationId] = useState<string | null>(
+    null
+  );
+  const [savingCreation, setSavingCreation] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const profileTokenLoaded = useRef(false);
+
+  useEffect(() => {
+    setProfileToken(localStorage.getItem("profileToken") ?? "");
+    profileTokenLoaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (profileTokenLoaded.current)
+      localStorage.setItem("profileToken", profileToken);
+  }, [profileToken]);
+
+  const refreshProfile = useCallback(
+    async (token: string) => {
+      const tok = token.trim();
+      if (!tok) {
+        setProfileData(null);
+        return;
+      }
+      setProfileLoading(true);
+      setProfileError(null);
+      try {
+        const res = await fetch(
+          `/api/profile?token=${encodeURIComponent(tok)}`
+        );
+        if (!res.ok) {
+          setProfileData(null);
+          setProfileError(t.profileNotFound);
+          return;
+        }
+        setProfileData(await res.json());
+      } catch {
+        setProfileError(t.profileNetErr);
+      } finally {
+        setProfileLoading(false);
+      }
+    },
+    [t]
+  );
+
+  useEffect(() => {
+    if (profileTokenLoaded.current && profileToken.trim())
+      void refreshProfile(profileToken);
+  }, [profileToken, refreshProfile]);
+
+  const joinProfile = () => {
+    const tok = profileTokenInput.trim();
+    if (!tok) return;
+    setProfileToken(tok);
+    setProfileTokenInput("");
+  };
+
+  const forgetProfile = () => {
+    setProfileToken("");
+    setProfileData(null);
+    setProfileError(null);
+    setActiveCreationId(null);
+  };
+
+  const saveCredentials = async () => {
+    const tmdbKey = newTmdbKey.trim();
+    const imagekitKey = newImagekitKey.trim();
+    if (!tmdbKey && !imagekitKey) return;
+    const isNew = !profileToken.trim();
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: profileToken.trim() || undefined,
+          tmdbKey: tmdbKey || undefined,
+          imagekitKey: imagekitKey || undefined,
+        }),
+      });
+      if (!res.ok) {
+        setProfileError(t.profileSaveErr);
+        return;
+      }
+      const data = await res.json();
+      setNewTmdbKey("");
+      setNewImagekitKey("");
+      setProfileToken(data.token);
+      if (isNew) setShowTokenWarning(true);
+      void refreshProfile(data.token);
+    } catch {
+      setProfileError(t.profileNetErr);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const removeCredential = async (service: "tmdb" | "imagekit") => {
+    if (!profileToken.trim()) return;
+    try {
+      const res = await fetch("/api/profile", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: profileToken.trim(), service }),
+      });
+      if (res.ok) void refreshProfile(profileToken);
+    } catch {
+      // silencioso: quitar una credencial no debe romper la UI
+    }
+  };
 
   // ---- Generador de portadas ----
   const [mode, setMode] = useState<"mosaic" | "cover">("mosaic");
@@ -602,30 +740,14 @@ export default function Editor() {
     setTimeout(() => setCopied(null), 1500);
   };
 
-  // ---- Importar una imagen ya generada para volver a editarla ----
-  const [importInput, setImportInput] = useState("");
-  const [importError, setImportError] = useState<string | null>(null);
-  const [importOk, setImportOk] = useState(false);
-
-  const importFromUrl = () => {
-    setImportError(null);
-    setImportOk(false);
-    let u: URL;
-    try {
-      u = new URL(importInput.trim());
-    } catch {
-      setImportError(t.importInvalidUrl);
-      return;
-    }
-    const p = u.searchParams;
-    const isCover = u.pathname.includes("/api/cover");
-    const isRender = u.pathname.includes("/api/render");
-    if (!isCover && !isRender) {
-      setImportError(t.importNotApp);
-      return;
-    }
-    const key = p.get("key");
-    if (key) setAccessKey(key);
+  // Aplica un set de parámetros (de una URL de API o de una creación
+  // guardada) al estado del Editor. Compartido por importFromUrl y
+  // loadCreation: mismo shape de datos, dos orígenes distintos.
+  const applyParamsToEditor = (
+    p: URLSearchParams,
+    isCover: boolean,
+    itemTitlePrefix: string
+  ) => {
     const catalogs = p.getAll("catalog").filter(Boolean);
 
     if (isCover) {
@@ -650,7 +772,7 @@ export default function Editor() {
             id: p.get("id") ?? img,
             mediaType:
               media === "movie" || media === "tv" ? media : "catalog",
-            title: lang === "en" ? "Imported from URL" : "Importado desde URL",
+            title: itemTitlePrefix,
             year: "",
             poster: img,
             backdrop: img,
@@ -682,7 +804,7 @@ export default function Editor() {
           imgs.map((path, i) => ({
             id: `import-${i}-${path}`,
             mediaType: "movie" as const,
-            title: `${lang === "en" ? "Imported" : "Importado"} ${i + 1}`,
+            title: `${itemTitlePrefix} ${i + 1}`,
             year: "",
             poster: path,
             backdrop: path,
@@ -690,9 +812,163 @@ export default function Editor() {
         );
       }
     }
+  };
+
+  // ---- Importar una imagen ya generada para volver a editarla ----
+  const [importInput, setImportInput] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importOk, setImportOk] = useState(false);
+
+  const importFromUrl = () => {
+    setImportError(null);
+    setImportOk(false);
+    let u: URL;
+    try {
+      u = new URL(importInput.trim());
+    } catch {
+      setImportError(t.importInvalidUrl);
+      return;
+    }
+    const p = u.searchParams;
+    const isCover = u.pathname.includes("/api/cover");
+    const isRender = u.pathname.includes("/api/render");
+    if (!isCover && !isRender) {
+      setImportError(t.importNotApp);
+      return;
+    }
+    const key = p.get("key");
+    if (key) setAccessKey(key);
+    applyParamsToEditor(
+      p,
+      isCover,
+      lang === "en" ? "Imported from URL" : "Importado desde URL"
+    );
+    setActiveCreationId(null);
     setImportOk(true);
     setImportInput("");
     setTimeout(() => setImportOk(false), 2500);
+  };
+
+  // ---- Creaciones guardadas (requieren un token de perfil activo) ----
+
+  // Config actual del Editor tal como la usarían /api/render o /api/cover,
+  // sin ninguna credencial (key/token/tmdb_key/imagekit_key): ver
+  // specs/003-user-profiles/contracts/profile-api.md.
+  const buildCreationConfig = (): Record<string, string> => {
+    const urlStr =
+      mode === "cover"
+        ? buildCoverApiUrl()
+        : buildApiUrl(catalogUrlList.length > 0 ? "catalog" : "imgs");
+    const url = new URL(urlStr);
+    url.searchParams.delete("key");
+    url.searchParams.delete("token");
+    url.searchParams.delete("tmdb_key");
+    url.searchParams.delete("imagekit_key");
+    return Object.fromEntries(url.searchParams.entries());
+  };
+
+  const saveCreation = async () => {
+    if (!profileToken.trim()) return;
+    const name = creationName.trim();
+    if (!activeCreationId && !name) return;
+    setSavingCreation(true);
+    try {
+      const config = buildCreationConfig();
+      const res = await fetch(
+        activeCreationId
+          ? `/api/profile/creations/${activeCreationId}`
+          : "/api/profile/creations",
+        {
+          method: activeCreationId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            activeCreationId
+              ? { token: profileToken.trim(), name: name || undefined, config }
+              : { token: profileToken.trim(), name, type: mode, config }
+          ),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (!activeCreationId) setActiveCreationId(data.id);
+        setCreationName("");
+        void refreshProfile(profileToken);
+      }
+    } catch {
+      // silencioso: guardar una creación no debe romper el editor
+    } finally {
+      setSavingCreation(false);
+    }
+  };
+
+  const loadCreation = async (creation: ProfileCreation) => {
+    if (!profileToken.trim()) return;
+    try {
+      const res = await fetch(
+        `/api/profile/creations/${creation.id}?token=${encodeURIComponent(
+          profileToken.trim()
+        )}`
+      );
+      if (!res.ok) return;
+      const data: { config: Record<string, string> } = await res.json();
+      applyParamsToEditor(
+        new URLSearchParams(data.config),
+        creation.type === "cover",
+        creation.name
+      );
+      setActiveCreationId(creation.id);
+      setCreationName(creation.name);
+    } catch {
+      // silencioso
+    }
+  };
+
+  const renameCreation = async (id: string) => {
+    if (!profileToken.trim()) return;
+    const name = renameDraft.trim();
+    if (!name) return;
+    try {
+      const res = await fetch(`/api/profile/creations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: profileToken.trim(), name }),
+      });
+      if (res.ok) {
+        setRenamingId(null);
+        void refreshProfile(profileToken);
+      }
+    } catch {
+      // silencioso
+    }
+  };
+
+  const deleteCreation = async (id: string) => {
+    if (!profileToken.trim()) return;
+    try {
+      const res = await fetch(`/api/profile/creations/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: profileToken.trim() }),
+      });
+      if (res.ok) {
+        if (activeCreationId === id) setActiveCreationId(null);
+        void refreshProfile(profileToken);
+      }
+    } catch {
+      // silencioso
+    }
+  };
+
+  // URL corta y estable (token + id de creación) en vez de la lista larga
+  // de parámetros — la resuelven los endpoints de render/cover (specs
+  // 001-tmdb-byo-key / 002-cdn-render-cache).
+  const getCreationUrl = (creation: ProfileCreation) => {
+    const base = creation.type === "cover" ? "/api/cover" : "/api/render";
+    const p = new URLSearchParams({
+      token: profileToken.trim(),
+      creation: creation.id,
+    });
+    return `${window.location.origin}${base}?${p.toString()}`;
   };
 
   return (
@@ -851,6 +1127,315 @@ export default function Editor() {
               <p className="mt-1 text-xs text-emerald-400">{t.importOk}</p>
             )}
             <p className="mt-1 text-[11px] text-neutral-600">{t.importHelp}</p>
+          </div>
+
+          <div className="border-t border-neutral-800 pt-4">
+            <label className="text-xs uppercase tracking-wide text-neutral-500">
+              {t.profileTitle}
+            </label>
+
+            {!profileToken.trim() ? (
+              <div className="mt-1 space-y-2">
+                <div className="flex gap-1">
+                  <input
+                    value={profileTokenInput}
+                    onChange={(e) => setProfileTokenInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") joinProfile();
+                    }}
+                    placeholder={t.profileTokenPlaceholder}
+                    className="flex-1 min-w-0 rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
+                  />
+                  <button
+                    disabled={!profileTokenInput.trim()}
+                    onClick={joinProfile}
+                    className="rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-2 text-xs whitespace-nowrap"
+                  >
+                    {t.profileJoin}
+                  </button>
+                </div>
+                <p className="text-[11px] text-neutral-600">{t.profileOr}</p>
+                <input
+                  type="password"
+                  value={newTmdbKey}
+                  onChange={(e) => setNewTmdbKey(e.target.value)}
+                  placeholder={t.profileTmdbKeyPlaceholder}
+                  className="w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
+                />
+                <input
+                  type="password"
+                  value={newImagekitKey}
+                  onChange={(e) => setNewImagekitKey(e.target.value)}
+                  placeholder={t.profileImagekitKeyPlaceholder}
+                  className="w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
+                />
+                <button
+                  disabled={
+                    (!newTmdbKey.trim() && !newImagekitKey.trim()) ||
+                    profileLoading
+                  }
+                  onClick={saveCredentials}
+                  className="w-full rounded bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 px-3 py-2 text-xs font-medium"
+                >
+                  {profileLoading ? t.loading : t.profileCreate}
+                </button>
+                {profileError && (
+                  <p className="text-xs text-red-400">{profileError}</p>
+                )}
+              </div>
+            ) : (
+              <div className="mt-1 space-y-3">
+                <div className="flex items-center gap-2 rounded bg-neutral-900 border border-neutral-800 px-2 py-1.5">
+                  <span
+                    className="flex-1 truncate text-[11px] font-mono text-neutral-400"
+                    title={profileToken}
+                  >
+                    {profileToken}
+                  </span>
+                  <button
+                    onClick={() => copy("token", profileToken)}
+                    title={t.profileCopyToken}
+                    className="text-neutral-500 hover:text-white text-xs"
+                  >
+                    ⧉
+                  </button>
+                  <button
+                    onClick={forgetProfile}
+                    title={t.profileForgetTitle}
+                    className="text-neutral-500 hover:text-red-400 text-xs whitespace-nowrap"
+                  >
+                    {t.profileForget}
+                  </button>
+                </div>
+
+                {profileLoading && (
+                  <p className="text-[11px] text-neutral-500">{t.loading}</p>
+                )}
+                {profileError && (
+                  <p className="text-xs text-red-400">{profileError}</p>
+                )}
+
+                {profileData && (
+                  <>
+                    <div className="flex gap-2 text-[11px]">
+                      <span
+                        className={`flex-1 rounded border px-2 py-1 text-center ${
+                          profileData.hasTmdbKey
+                            ? "border-emerald-600 text-emerald-400"
+                            : "border-neutral-800 text-neutral-600"
+                        }`}
+                      >
+                        {profileData.hasTmdbKey
+                          ? t.profileHasTmdb
+                          : t.profileNoTmdb}
+                        {profileData.hasTmdbKey && (
+                          <button
+                            onClick={() => removeCredential("tmdb")}
+                            title={t.profileRemoveCredential}
+                            className="ml-1.5 text-neutral-500 hover:text-red-400"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                      <span
+                        className={`flex-1 rounded border px-2 py-1 text-center ${
+                          profileData.hasImagekitKey
+                            ? "border-emerald-600 text-emerald-400"
+                            : "border-neutral-800 text-neutral-600"
+                        }`}
+                      >
+                        {profileData.hasImagekitKey
+                          ? t.profileHasImagekit
+                          : t.profileNoImagekit}
+                        {profileData.hasImagekitKey && (
+                          <button
+                            onClick={() => removeCredential("imagekit")}
+                            title={t.profileRemoveCredential}
+                            className="ml-1.5 text-neutral-500 hover:text-red-400"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    </div>
+
+                    {(!profileData.hasTmdbKey ||
+                      !profileData.hasImagekitKey) && (
+                      <div className="space-y-1">
+                        {!profileData.hasTmdbKey && (
+                          <input
+                            type="password"
+                            value={newTmdbKey}
+                            onChange={(e) => setNewTmdbKey(e.target.value)}
+                            placeholder={t.profileTmdbKeyPlaceholder}
+                            className="w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-xs outline-none focus:border-violet-500"
+                          />
+                        )}
+                        {!profileData.hasImagekitKey && (
+                          <input
+                            type="password"
+                            value={newImagekitKey}
+                            onChange={(e) =>
+                              setNewImagekitKey(e.target.value)
+                            }
+                            placeholder={t.profileImagekitKeyPlaceholder}
+                            className="w-full rounded bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-xs outline-none focus:border-violet-500"
+                          />
+                        )}
+                        <button
+                          disabled={
+                            !newTmdbKey.trim() && !newImagekitKey.trim()
+                          }
+                          onClick={saveCredentials}
+                          className="w-full rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-1.5 text-xs"
+                        >
+                          {t.profileCreate}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="border-t border-neutral-800 pt-3">
+                      <label className="text-[11px] uppercase tracking-wide text-neutral-600">
+                        {t.profileCreationsTitle}
+                      </label>
+                      {profileData.creations.length === 0 ? (
+                        <p className="mt-1 text-[11px] text-neutral-600">
+                          {t.profileNoCreations}
+                        </p>
+                      ) : (
+                        <ul className="mt-1 space-y-1">
+                          {profileData.creations.map((c) => (
+                            <li
+                              key={c.id}
+                              className={`rounded border px-2 py-1.5 ${
+                                activeCreationId === c.id
+                                  ? "border-violet-500 bg-violet-500/10"
+                                  : "border-neutral-800 bg-neutral-900"
+                              }`}
+                            >
+                              {renamingId === c.id ? (
+                                <div className="flex gap-1">
+                                  <input
+                                    value={renameDraft}
+                                    onChange={(e) =>
+                                      setRenameDraft(e.target.value)
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter")
+                                        renameCreation(c.id);
+                                      if (e.key === "Escape")
+                                        setRenamingId(null);
+                                    }}
+                                    autoFocus
+                                    className="flex-1 min-w-0 rounded bg-neutral-950 border border-neutral-700 px-2 py-1 text-xs outline-none focus:border-violet-500"
+                                  />
+                                  <button
+                                    onClick={() => renameCreation(c.id)}
+                                    className="px-1 text-xs text-emerald-400 hover:text-emerald-300"
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    onClick={() => setRenamingId(null)}
+                                    className="px-1 text-xs text-neutral-500 hover:text-white"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => loadCreation(c)}
+                                    title={t.profileLoadCreation}
+                                    className="flex-1 min-w-0 truncate text-left text-xs"
+                                  >
+                                    {c.name}
+                                    <span className="ml-1.5 text-[10px] uppercase text-neutral-500">
+                                      {c.type}
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      copy(
+                                        `creation-${c.id}`,
+                                        getCreationUrl(c)
+                                      )
+                                    }
+                                    title={t.profileCopyCreationUrl}
+                                    className="text-neutral-500 hover:text-white text-xs"
+                                  >
+                                    ⧉
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setRenamingId(c.id);
+                                      setRenameDraft(c.name);
+                                    }}
+                                    title={t.profileRenameCreation}
+                                    className="text-neutral-500 hover:text-white text-xs"
+                                  >
+                                    ✎
+                                  </button>
+                                  <button
+                                    onClick={() => deleteCreation(c.id)}
+                                    title={t.profileDeleteCreation}
+                                    className="text-neutral-500 hover:text-red-400 text-xs"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <div className="mt-2 flex gap-1">
+                        <input
+                          value={creationName}
+                          onChange={(e) => setCreationName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveCreation();
+                          }}
+                          placeholder={
+                            activeCreationId
+                              ? t.profileRenamePlaceholder
+                              : t.profileSaveCurrentPlaceholder
+                          }
+                          className="flex-1 min-w-0 rounded bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-violet-500"
+                        />
+                        <button
+                          disabled={
+                            (!activeCreationId && !creationName.trim()) ||
+                            savingCreation
+                          }
+                          onClick={saveCreation}
+                          className="rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 px-3 py-2 text-xs whitespace-nowrap"
+                        >
+                          {savingCreation
+                            ? t.loading
+                            : activeCreationId
+                            ? t.profileUpdateCurrent
+                            : t.profileSaveCurrent}
+                        </button>
+                      </div>
+                      {activeCreationId && (
+                        <button
+                          onClick={() => {
+                            setActiveCreationId(null);
+                            setCreationName("");
+                          }}
+                          className="mt-1 text-[11px] text-neutral-500 hover:text-white"
+                        >
+                          {t.profileSaveAsNew}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="border-t border-neutral-800 pt-4">
@@ -1595,6 +2180,25 @@ export default function Editor() {
       {copied && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-full bg-neutral-800 border border-neutral-700 px-4 py-2 text-xs shadow-lg">
           {t.urlCopied}
+        </div>
+      )}
+      {showTokenWarning && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-6">
+          <div className="max-w-sm space-y-3 rounded-lg border border-amber-600/50 bg-neutral-900 p-5">
+            <p className="text-sm font-semibold text-amber-400">
+              {t.profileWarningTitle}
+            </p>
+            <p className="text-xs text-neutral-300">{t.profileWarningBody}</p>
+            <p className="break-all rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 font-mono text-[11px] text-neutral-200">
+              {profileToken}
+            </p>
+            <button
+              onClick={() => setShowTokenWarning(false)}
+              className="w-full rounded bg-violet-600 px-3 py-2 text-xs font-medium text-white hover:bg-violet-500"
+            >
+              {t.profileWarningConfirm}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -100,8 +100,35 @@ All configuration is done via environment variables or the web UI.
 | `NODE_ENV` | development | Set to `production` for serverless deployment |
 | `ACCESS_KEY` | - | Optional shared secret for API authentication. Leave blank for open access. |
 | `NEXT_PUBLIC_API_BASE` | `/api` | Base URL for API calls (change if behind a proxy) |
+| `MOSAIQ_DB_URL` | `file:./data/mosaiq.db` | User profile store location (see [User Profiles](#user-profiles)): a local file for self-hosted Docker, or a `libsql://...` Turso URL for serverless deployments |
+| `MOSAIQ_DB_AUTH_TOKEN` | - | Auth token for a remote `MOSAIQ_DB_URL` (not needed for a local file) |
+| `TOKEN_ENCRYPTION_KEY` | - | Required to save any personal TMDB/ImageKit credential to a profile. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
 
 All other parameters (mosaic columns, gap, rotation, filters, overlays) are configured via the web UI or passed as query parameters to the REST API.
+
+---
+
+## User Profiles
+
+On the public hosted instance (or any deployment under heavy load), you can bring your own
+TMDB and ImageKit API keys instead of sharing the server's quota. Profiles are opt-in and
+identified by a single opaque UUID token — never by an account or email.
+
+- In the Editor, open the profile panel and enter your TMDB and/or ImageKit key. This
+  creates a profile and returns a UUID token.
+- Your raw keys are encrypted at rest (`TOKEN_ENCRYPTION_KEY`) and are **never** sent
+  anywhere except directly to TMDB/ImageKit from the server — not to Nuvio, not to Stremio,
+  not back to your browser after the initial save.
+- Only the UUID token travels in URLs (e.g. pasted into a Nuvio collection), since it
+  identifies your profile server-side but reveals nothing on its own.
+- The same token also lets you save Editor configurations ("creations") and reload or edit
+  them later from any device — just re-enter the token.
+- **The token is unrecoverable if lost** — there's no email/password recovery, since none is
+  collected. Save it somewhere safe.
+
+Requires `MOSAIQ_DB_URL` and `TOKEN_ENCRYPTION_KEY` to be set (see Configuration above); with
+neither set, profiles are simply unavailable and the server behaves as before. See
+[`specs/003-user-profiles/`](specs/003-user-profiles/) for the full design and API contract.
 
 ---
 

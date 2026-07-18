@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude code local settings (never share permission grants)
 .claude/settings.local.json
+
+# local libSQL database (user profile/credential store)
+/data/

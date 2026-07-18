@@ -28,9 +28,9 @@ Single project (Next.js App Router) — `src/`, `tests/` at repository root, per
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Add `@libsql/client` to `package.json` dependencies (`npm install @libsql/client`)
-- [ ] T002 [P] Install and configure Vitest — `vitest.config.ts` + `"test": "vitest run"` script in `package.json` (first test runner in this project)
-- [ ] T003 [P] Document `MOSAIQ_DB_URL`, `MOSAIQ_DB_AUTH_TOKEN`, `TOKEN_ENCRYPTION_KEY` in `.env.example` and the Configuration table in `README.md`
+- [X] T001 Add `@libsql/client` to `package.json` dependencies (`npm install @libsql/client`)
+- [X] T002 [P] Install and configure Vitest — `vitest.config.ts` + `"test": "vitest run"` script in `package.json` (first test runner in this project)
+- [X] T003 [P] Document `MOSAIQ_DB_URL`, `MOSAIQ_DB_AUTH_TOKEN`, `TOKEN_ENCRYPTION_KEY` in `.env.example` and the Configuration table in `README.md`
 
 ---
 
@@ -40,9 +40,9 @@ Single project (Next.js App Router) — `src/`, `tests/` at repository root, per
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create `src/lib/profile.ts` with a libSQL client connection helper (selects local file vs. Turso via `MOSAIQ_DB_URL`/`MOSAIQ_DB_AUTH_TOKEN`, per research.md Decision 1)
-- [ ] T005 Add schema initialization to `src/lib/profile.ts`: `profiles` table, `creations` table, `idx_creations_profile_token` index (exact DDL in research.md Decision 4)
-- [ ] T006 [P] Implement `encryptSecret`/`decryptSecret` helpers (AES-256-GCM via `TOKEN_ENCRYPTION_KEY`, Node's built-in `crypto`) in `src/lib/profile.ts` (research.md Decision 2)
+- [X] T004 Create `src/lib/profile.ts` with a libSQL client connection helper (selects local file vs. Turso via `MOSAIQ_DB_URL`/`MOSAIQ_DB_AUTH_TOKEN`, per research.md Decision 1)
+- [X] T005 Add schema initialization to `src/lib/profile.ts`: `profiles` table, `creations` table, `idx_creations_profile_token` index (exact DDL in research.md Decision 4)
+- [X] T006 [P] Implement `encryptSecret`/`decryptSecret` helpers (AES-256-GCM via `TOKEN_ENCRYPTION_KEY`, Node's built-in `crypto`) in `src/lib/profile.ts` (research.md Decision 2)
 
 **Checkpoint**: Storage layer ready — user story implementation can now begin
 
@@ -56,21 +56,21 @@ Single project (Next.js App Router) — `src/`, `tests/` at repository root, per
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Unit test: `encryptSecret`/`decryptSecret` round-trip in `tests/lib/profile.test.ts`
-- [ ] T008 [P] [US1] Unit test: `createOrUpdateProfile` — creates new profile when `token` omitted, upserts credentials when `token` provided, rejects unknown `token` in `tests/lib/profile.test.ts`
-- [ ] T009 [P] [US1] Unit test: `getProfile` never returns raw/decrypted credential values, only `hasTmdbKey`/`hasImagekitKey` booleans, in `tests/lib/profile.test.ts`
-- [ ] T010 [P] [US1] Route test: `POST /api/profile` (create, upsert, response never contains raw key) in `tests/api/profile.test.ts`
-- [ ] T011 [P] [US1] Route test: `GET /api/profile?token=` (found and 404-unknown-token cases) in `tests/api/profile.test.ts`
-- [ ] T012 [P] [US1] Route test: `DELETE /api/profile` (removes one credential, leaves the other untouched, 404 on unknown token) in `tests/api/profile.test.ts`
+- [X] T007 [P] [US1] Unit test: `encryptSecret`/`decryptSecret` round-trip in `tests/lib/profile.test.ts`
+- [X] T008 [P] [US1] Unit test: `createOrUpdateProfile` — creates new profile when `token` omitted, upserts credentials when `token` provided, rejects unknown `token` in `tests/lib/profile.test.ts`
+- [X] T009 [P] [US1] Unit test: `getProfile` never returns raw/decrypted credential values, only `hasTmdbKey`/`hasImagekitKey` booleans, in `tests/lib/profile.test.ts`
+- [X] T010 [P] [US1] Route test: `POST /api/profile` (create, upsert, response never contains raw key) in `tests/api/profile.test.ts`
+- [X] T011 [P] [US1] Route test: `GET /api/profile?token=` (found and 404-unknown-token cases) in `tests/api/profile.test.ts`
+- [X] T012 [P] [US1] Route test: `DELETE /api/profile` (removes one credential, leaves the other untouched, 404 on unknown token) in `tests/api/profile.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Implement `createOrUpdateProfile({ token?, tmdbKey?, imagekitKey? })` in `src/lib/profile.ts` (generates `crypto.randomUUID()` when `token` omitted; encrypts credentials via T006; depends on T004-T006)
-- [ ] T014 [US1] Implement `getProfile(token)` returning `{ hasTmdbKey, hasImagekitKey, creations: [] }` (creations list wired up fully in US2; empty array here) in `src/lib/profile.ts`
-- [ ] T015 [US1] Implement `deleteCredential(token, service)` in `src/lib/profile.ts`
-- [ ] T016 [US1] Implement `GET`/`POST` handlers in `src/app/api/profile/route.ts` per contracts/profile-api.md
-- [ ] T017 [US1] Implement `DELETE` handler in `src/app/api/profile/route.ts`
-- [ ] T018 [US1] Add clear `404` responses for unknown token on all three handlers (FR-007)
+- [X] T013 [US1] Implement `createOrUpdateProfile({ token?, tmdbKey?, imagekitKey? })` in `src/lib/profile.ts` (generates `crypto.randomUUID()` when `token` omitted; encrypts credentials via T006; depends on T004-T006)
+- [X] T014 [US1] Implement `getProfile(token)` returning `{ hasTmdbKey, hasImagekitKey, creations: [] }` (creations list wired up fully in US2; empty array here) in `src/lib/profile.ts`
+- [X] T015 [US1] Implement `deleteCredential(token, service)` in `src/lib/profile.ts`
+- [X] T016 [US1] Implement `GET`/`POST` handlers in `src/app/api/profile/route.ts` per contracts/profile-api.md
+- [X] T017 [US1] Implement `DELETE` handler in `src/app/api/profile/route.ts`
+- [X] T018 [US1] Add clear `404` responses for unknown token on all three handlers (FR-007)
 
 **Checkpoint**: User Story 1 fully functional and independently testable (quickstart.md Scenarios 1-3)
 
@@ -86,22 +86,22 @@ Single project (Next.js App Router) — `src/`, `tests/` at repository root, per
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Unit tests: `createCreation`, `updateCreation`, `deleteCreation`, `listCreations`, `getCreation` in `tests/lib/profile.test.ts`
-- [ ] T020 [P] [US2] Unit test: `updateCreation`/`deleteCreation` return the same not-found result for a wrong token as for a nonexistent `id` (FR-007 non-disclosure) in `tests/lib/profile.test.ts`
-- [ ] T021 [P] [US2] Route tests: `POST /api/profile/creations`, `PUT /api/profile/creations/:id`, `DELETE /api/profile/creations/:id` in `tests/api/profile.test.ts`
+- [X] T019 [P] [US2] Unit tests: `createCreation`, `updateCreation`, `deleteCreation`, `listCreations`, `getCreation` in `tests/lib/profile.test.ts`
+- [X] T020 [P] [US2] Unit test: `updateCreation`/`deleteCreation` return the same not-found result for a wrong token as for a nonexistent `id` (FR-007 non-disclosure) in `tests/lib/profile.test.ts`
+- [X] T021 [P] [US2] Route tests: `POST /api/profile/creations`, `PUT /api/profile/creations/:id`, `DELETE /api/profile/creations/:id` in `tests/api/profile.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Implement `createCreation(token, name, type, config)` in `src/lib/profile.ts` (rejects `config` containing `tmdb_key`/`imagekit_key`/`key`, per contracts/profile-api.md defense-in-depth note)
-- [ ] T023 [US2] Implement `updateCreation(id, token, name?, config?)` in `src/lib/profile.ts` — validates `token` owns `id` before updating
-- [ ] T024 [US2] Implement `deleteCreation(id, token)` in `src/lib/profile.ts`
-- [ ] T025 [US2] Implement `listCreations(token)` and wire it into `getProfile` (completes T014's stub) in `src/lib/profile.ts`
-- [ ] T026 [US2] Implement `POST /api/profile/creations/route.ts`
-- [ ] T027 [US2] Implement `PUT`/`DELETE` in `src/app/api/profile/creations/[id]/route.ts`
-- [ ] T028 [P] [US2] Editor UI: token entry field + profile panel showing credential presence and creations list in `src/app/page.tsx`
-- [ ] T029 [P] [US2] Editor UI: "Save creation" action (name input, saves current mosaic/cover config) in `src/app/page.tsx`
-- [ ] T030 [US2] Editor UI: load a creation into Editor state, rename, delete actions in `src/app/page.tsx` (depends on T028)
-- [ ] T031 [US2] Editor UI: "Get shareable URL" action producing a `?token=&creation=` URL in `src/app/page.tsx`
+- [X] T022 [US2] Implement `createCreation(token, name, type, config)` in `src/lib/profile.ts` (rejects `config` containing `tmdb_key`/`imagekit_key`/`key`, per contracts/profile-api.md defense-in-depth note)
+- [X] T023 [US2] Implement `updateCreation(id, token, name?, config?)` in `src/lib/profile.ts` — validates `token` owns `id` before updating
+- [X] T024 [US2] Implement `deleteCreation(id, token)` in `src/lib/profile.ts`
+- [X] T025 [US2] Implement `listCreations(token)` and wire it into `getProfile` (completes T014's stub) in `src/lib/profile.ts`
+- [X] T026 [US2] Implement `POST /api/profile/creations/route.ts`
+- [X] T027 [US2] Implement `PUT`/`DELETE` in `src/app/api/profile/creations/[id]/route.ts`
+- [X] T028 [P] [US2] Editor UI: token entry field + profile panel showing credential presence and creations list in `src/app/page.tsx`
+- [X] T029 [P] [US2] Editor UI: "Save creation" action (name input, saves current mosaic/cover config) in `src/app/page.tsx`
+- [X] T030 [US2] Editor UI: load a creation into Editor state, rename, delete actions in `src/app/page.tsx` (depends on T028) — the `GET /api/profile/creations/:id` route it needed was missing from the original contract; added post-hoc (see contracts/profile-api.md) and now wired end-to-end
+- [X] T031 [US2] Editor UI: "Get shareable URL" action producing a `?token=&creation=` URL in `src/app/page.tsx`
 
 **Checkpoint**: User Stories 1 and 2 both independently functional
 
@@ -117,12 +117,12 @@ Single project (Next.js App Router) — `src/`, `tests/` at repository root, per
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Integration test: full profile (credential presence + all creations) restores identically when `getProfile` is called with the same token from a separate test context, in `tests/api/profile.test.ts`
+- [X] T032 [P] [US3] Integration test: full profile (credential presence + all creations) restores identically when `getProfile` is called with the same token from a separate test context, in `tests/api/profile.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Editor UI: one-time, prominent warning shown at token creation — "save this token, it cannot be recovered" — in `src/app/page.tsx` (depends on T028)
-- [ ] T034 [US3] Editor UI: distinct "enter an existing token" flow with a clear invalid-token error display in `src/app/page.tsx` (depends on T028)
+- [X] T033 [US3] Editor UI: one-time, prominent warning shown at token creation — "save this token, it cannot be recovered" — in `src/app/page.tsx` (depends on T028)
+- [X] T034 [US3] Editor UI: distinct "enter an existing token" flow with a clear invalid-token error display in `src/app/page.tsx` (depends on T028)
 
 **Checkpoint**: All three user stories independently functional
 
@@ -130,9 +130,9 @@ Single project (Next.js App Router) — `src/`, `tests/` at repository root, per
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T035 [P] Add a "User Profiles" section to `README.md` explaining the token mechanism and its no-recovery tradeoff
-- [ ] T036 [P] Unit test: deleting a `profiles` row cascades to delete its `creations` rows (schema-level `ON DELETE CASCADE` check) in `tests/lib/profile.test.ts`
-- [ ] T037 Run all `quickstart.md` scenarios (1-7) manually against a local dev server as final validation
+- [X] T035 [P] Add a "User Profiles" section to `README.md` explaining the token mechanism and its no-recovery tradeoff
+- [X] T036 [P] Unit test: deleting a `profiles` row cascades to delete its `creations` rows (schema-level `ON DELETE CASCADE` check) in `tests/lib/profile.test.ts`
+- [X] T037 Run all `quickstart.md` scenarios (1-7) manually against a local dev server as final validation
 
 ---
 

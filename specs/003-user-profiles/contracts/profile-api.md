@@ -74,6 +74,16 @@ place).
 
 **Response `404`**: unknown token.
 
+## `GET /api/profile/creations/:id?token=<uuid>`
+
+*(Added during implementation — the original contract omitted a way to read a single
+creation's full config back, which the Editor's "load a saved creation" flow needs.)*
+
+**Response `200`**: `{ "id": "...", "name": "...", "type": "mosaic", "config": {...}, "updatedAt": 1752863000000 }`
+
+**Response `404`**: unknown token, or `id` doesn't exist / doesn't belong to that token
+(same non-disclosure rule as `PUT`/`DELETE` below).
+
 ## `PUT /api/profile/creations/:id`
 
 Update an existing creation in place (FR-005, spec Acceptance Scenario 3).
