@@ -144,8 +144,15 @@ export async function listFilesByPrefix(
 ): Promise<ImageKitFile[]> {
   const url = new URL(IMAGEKIT_FILES_URL);
   url.searchParams.set("path", `/${CACHE_FOLDER}`);
-  url.searchParams.set("searchQuery", `name : "${prefix}*"`);
   url.searchParams.set("limit", "100");
+  // El wildcard `*` de ImageKit resultó no ser fiable en pruebas contra una
+  // cuenta real (con o sin comillas, con o sin escapar como %2A, a veces
+  // devuelve 0 resultados o un 400 "name field must be string"). El
+  // operador `:` ya hace un match tipo "contains" sin necesidad de `*` — se
+  // usa así, y el filtro `.startsWith(prefix)` de abajo se encarga de
+  // acotar a coincidencias reales de prefijo (ImageKit no distingue
+  // contains de starts-with).
+  url.searchParams.set("searchQuery", `name : "${prefix}"`);
 
   const res = await fetch(url, { headers: authHeader(key) });
   if (!res.ok) {
