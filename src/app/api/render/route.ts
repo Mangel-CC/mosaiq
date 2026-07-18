@@ -1,7 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
 import { configFromParams, renderMosaic } from "@/lib/mosaic";
-import { resolveCatalogs } from "@/lib/catalog";
+import { resolveCatalogs, CatalogItem } from "@/lib/catalog";
+import {
+  computeConfigHash,
+  computeFreshnessToken,
+  resolveImageKitKey,
+  ResolvedImageKitKey,
+  saveToCache,
+  tryServeCached,
+} from "@/lib/cdnCache";
 
 // Genera el mosaico como PNG en el servidor con el mismo motor que usa el
 // editor. Dos fuentes de imágenes:
@@ -19,17 +27,10 @@ function tmdbImageUrl(path: string, type: "poster" | "backdrop"): string {
   return `https://image.tmdb.org/t/p/${size}${path}`;
 }
 
-async function urlsFromCatalogs(
-  catalogUrls: string[],
-  type: "poster" | "backdrop",
-  limit: number,
-  exclude: string[],
-  keyInput: { directKey?: string; token?: string }
-): Promise<string[]> {
-  // resolveCatalogs intenta obtener arte limpio de TMDB (sin etiquetas
-  // superpuestas), mezcla los catálogos intercalados y devuelve paths de
-  // TMDB o URLs absolutas de fallback.
-  const items = await resolveCatalogs(catalogUrls, limit, exclude, keyInput);
+function urlsFromCatalogItems(
+  items: CatalogItem[],
+  type: "poster" | "backdrop"
+): string[] {
   return items
     .map((it) => (type === "backdrop" ? it.backdrop || it.poster : it.poster || it.backdrop))
     .filter((u): u is string => typeof u === "string" && u.length > 0)
@@ -49,10 +50,18 @@ export async function GET(req: NextRequest) {
   // catalog e imgs se pueden combinar: catálogo dinámico + títulos
   // añadidos a mano en el editor.
   let urls: string[] = [];
+  // Items ya resueltos del/de los catálogo(s) (specs/002-cdn-render-cache):
+  // se necesitan aparte de `urls` para poder hashear el contenido actual del
+  // catálogo como freshnessToken (FR-007). `hasCatalog` distingue "hubo
+  // ?catalog=" de "catalogItems sigue vacío porque no hubo catálogo" — solo
+  // en el primer caso el freshnessToken deja de ser la constante "static".
+  let catalogItems: CatalogItem[] = [];
+  let hasCatalog = false;
   try {
     // Se admiten varios ?catalog= (se mezclan intercalados)
     const catalogs = params.getAll("catalog").filter(Boolean);
-    if (catalogs.length > 0) {
+    hasCatalog = catalogs.length > 0;
+    if (hasCatalog) {
       const limit = Math.min(
         Number(params.get("limit")) || MAX_IMAGES,
         MAX_IMAGES
@@ -60,13 +69,11 @@ export async function GET(req: NextRequest) {
       const exclude = (params.get("exclude") ?? "")
         .split(",")
         .filter(Boolean);
-      urls = await urlsFromCatalogs(
-        catalogs,
-        cfg.imageType,
-        limit,
-        exclude,
-        keyInput
-      );
+      // resolveCatalogs intenta obtener arte limpio de TMDB (sin etiquetas
+      // superpuestas), mezcla los catálogos intercalados y devuelve paths de
+      // TMDB o URLs absolutas de fallback.
+      catalogItems = await resolveCatalogs(catalogs, limit, exclude, keyInput);
+      urls = urlsFromCatalogItems(catalogItems, cfg.imageType);
     }
     const imgs = params.get("imgs");
     if (imgs) {
@@ -90,6 +97,33 @@ export async function GET(req: NextRequest) {
       { error: "Sin imágenes: usa ?imgs= o ?catalog=" },
       { status: 400 }
     );
+  }
+
+  // ---- Caché de renders vía CDN propio (specs/002-cdn-render-cache) ----
+  // Opcional: si ?token= o ?imagekit_key= resuelven una credencial de
+  // ImageKit, se comprueba si ya existe un asset cacheado para esta
+  // configuración exacta (+ contenido actual del catálogo, si aplica) antes
+  // de pagar el costo del render. Cualquier fallo de esta capa (credencial
+  // inválida, red caída, respuesta no-2xx de ImageKit) se traga aquí mismo:
+  // nunca debe romper ni bloquear la respuesta del render (FR-011).
+  let cdnKey: ResolvedImageKitKey | null = null;
+  let cacheConfigHash: string | null = null;
+  let cacheFreshnessToken: string | null = null;
+  try {
+    cdnKey = await resolveImageKitKey({
+      directKey: params.get("imagekit_key") ?? undefined,
+      token: params.get("token") ?? undefined,
+    });
+    if (cdnKey) {
+      cacheConfigHash = computeConfigHash(params);
+      cacheFreshnessToken = computeFreshnessToken(hasCatalog ? catalogItems : undefined);
+      const hit = await tryServeCached(cacheConfigHash, cacheFreshnessToken, cdnKey);
+      if (hit) {
+        return NextResponse.redirect(hit.url, 302);
+      }
+    }
+  } catch (err) {
+    console.error("[cdnCache] Fallo comprobando caché de /api/render:", err);
   }
 
   const loaded = await Promise.allSettled(
@@ -119,6 +153,32 @@ export async function GET(req: NextRequest) {
   );
 
   const png = canvas.toBuffer("image/png");
+
+  if (cdnKey && cacheConfigHash && cacheFreshnessToken) {
+    // after(): responde ya mismo con el PNG y garantiza (Vercel y
+    // self-hosted) que la subida a ImageKit se complete en segundo plano,
+    // sin sumar su latencia a esta respuesta.
+    const key = cdnKey;
+    const configHash = cacheConfigHash;
+    const freshnessToken = cacheFreshnessToken;
+    const saveTask = async () => {
+      try {
+        await saveToCache(configHash, freshnessToken, png, key);
+      } catch (err) {
+        console.error("[cdnCache] Fallo guardando en caché desde /api/render:", err);
+      }
+    };
+    try {
+      after(saveTask);
+    } catch {
+      // after() requiere el contexto de request de Next.js
+      // (AsyncLocalStorage), ausente al invocar el handler directamente
+      // como hacen los tests de este repo (tests/api/*.test.ts). Fuera de
+      // ese caso puntual, se completa de forma síncrona en vez de perderse.
+      await saveTask();
+    }
+  }
+
   return new NextResponse(new Uint8Array(png), {
     headers: {
       "Content-Type": "image/png",

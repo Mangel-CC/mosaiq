@@ -160,3 +160,172 @@ describe("GET /api/render — TMDB credential resolution for catalog=", () => {
     expect(body.error).toMatch(/credencial/i);
   });
 });
+
+// ---- CDN render caching (specs/002-cdn-render-cache) ----
+//
+// In-memory ImageKit stand-in, same shape as tests/lib/cdnCache.test.ts's
+// mockImageKitStore, optionally combined with a catalog-JSON branch so a
+// single mock can serve both the ?catalog= fetch and the ImageKit calls.
+function mockCdnFetch(opts: {
+  files: Map<string, { fileId: string; name: string; url: string }>;
+  catalogUrl?: string;
+  getMetas?: () => unknown[];
+}) {
+  let counter = 0;
+  return vi.spyOn(global, "fetch").mockImplementation(async (input, init) => {
+    const url = new URL(typeof input === "string" ? input : (input as URL).toString());
+    const method = (init?.method ?? "GET").toUpperCase();
+
+    if (opts.catalogUrl && url.toString().startsWith(opts.catalogUrl)) {
+      return new Response(JSON.stringify({ metas: opts.getMetas ? opts.getMetas() : [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    if (url.hostname === "upload.imagekit.io") {
+      const form = init?.body as FormData;
+      const fileName = form.get("fileName") as string;
+      for (const [id, f] of opts.files) {
+        if (f.name === fileName) opts.files.delete(id);
+      }
+      const fileId = `file_${++counter}`;
+      const record = {
+        fileId,
+        name: fileName,
+        url: `https://ik.imagekit.io/demo/mosaiq-cache/${fileName}`,
+      };
+      opts.files.set(fileId, record);
+      return new Response(JSON.stringify(record), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    if (url.hostname === "api.imagekit.io" && method === "GET") {
+      return new Response(JSON.stringify([...opts.files.values()]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    if (url.hostname === "api.imagekit.io" && method === "DELETE") {
+      const fileId = url.pathname.split("/").pop()!;
+      opts.files.delete(fileId);
+      return new Response(null, { status: 204 });
+    }
+
+    // Poster/backdrop bytes (imgs= or catalog fallback poster URLs).
+    return new Response(TINY_PNG, {
+      status: 200,
+      headers: { "content-type": "image/png" },
+    });
+  });
+}
+
+describe("GET /api/render — CDN render caching (specs/002-cdn-render-cache)", () => {
+  it("US1 (T010): cache miss renders+uploads (200), identical repeat is a 302 redirect, changed params get a distinct entry", async () => {
+    const created = await createOrUpdateProfile({ imagekitKey: "render-ik-key" });
+    const files = new Map<string, { fileId: string; name: string; url: string }>();
+    mockCdnFetch({ files });
+
+    const url = `/api/render?preset=netflix&w=64&h=64&imgs=/x1.jpg,/x2.jpg&token=${created!.token}`;
+
+    const first = await renderRoute(req(url));
+    expect(first.status).toBe(200);
+    expect(first.headers.get("Content-Type")).toBe("image/png");
+    expect(files.size).toBe(1);
+
+    const second = await renderRoute(req(url));
+    expect(second.status).toBe(302);
+    expect(second.headers.get("Location")).toContain("imagekit.io");
+    expect(files.size).toBe(1);
+
+    const changed = await renderRoute(
+      req(`/api/render?preset=netflix&w=128&h=64&imgs=/x1.jpg,/x2.jpg&token=${created!.token}`)
+    );
+    expect(changed.status).toBe(200);
+    expect(files.size).toBe(2);
+  });
+
+  it("US1: works via a directly-supplied imagekit_key too (secondary mechanism)", async () => {
+    const files = new Map<string, { fileId: string; name: string; url: string }>();
+    mockCdnFetch({ files });
+
+    const url = "/api/render?preset=netflix&w=64&h=64&imgs=/direct1.jpg&imagekit_key=direct-render-ik-key";
+    const first = await renderRoute(req(url));
+    expect(first.status).toBe(200);
+    expect(files.size).toBe(1);
+
+    const second = await renderRoute(req(url));
+    expect(second.status).toBe(302);
+  });
+
+  it("US2 (T017): catalog requests hit when content is unchanged, and produce a fresh render replacing the old file when content changes", async () => {
+    const created = await createOrUpdateProfile({ imagekitKey: "render-ik-catalog-key" });
+    const files = new Map<string, { fileId: string; name: string; url: string }>();
+    const catalogUrl = "https://fake.render-cache.test/top.json";
+    let metas: unknown[] = [
+      { id: "m1", name: "Item One", poster: "https://fake.img.test/m1.png" },
+    ];
+    mockCdnFetch({ files, catalogUrl, getMetas: () => metas });
+
+    // tmdb_key (source "direct") bypasses src/lib/catalog.ts's own 5-minute
+    // in-memory TTL cache (research.md Decision 4 there), so this test can
+    // isolate the CDN-caching layer's freshness detection (specs/002) from
+    // that unrelated, separately-scoped cache.
+    const url = `/api/render?preset=netflix&w=64&h=64&catalog=${encodeURIComponent(catalogUrl)}&limit=1&token=${created!.token}&tmdb_key=bypass-catalog-cache`;
+
+    const first = await renderRoute(req(url));
+    expect(first.status).toBe(200);
+    expect(files.size).toBe(1);
+    const firstFileName = [...files.values()][0].name;
+
+    const second = await renderRoute(req(url));
+    expect(second.status).toBe(302);
+    expect(files.size).toBe(1);
+
+    // Catalog content changes.
+    metas = [{ id: "m1", name: "Item One Renamed", poster: "https://fake.img.test/m1-changed.png" }];
+
+    const third = await renderRoute(req(url));
+    expect(third.status).toBe(200);
+    expect(files.size).toBe(1); // replaced, not accumulated (FR-008)
+    const thirdFileName = [...files.values()][0].name;
+    expect(thirdFileName).not.toBe(firstFileName);
+  });
+
+  it("US3 (T020): makes no ImageKit calls when no token/imagekit_key is supplied", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = new URL(typeof input === "string" ? input : (input as URL).toString());
+      if (url.hostname === "api.imagekit.io" || url.hostname === "upload.imagekit.io") {
+        throw new Error(`Unexpected ImageKit call: ${url.toString()}`);
+      }
+      return new Response(TINY_PNG, { status: 200, headers: { "content-type": "image/png" } });
+    });
+
+    const res = await renderRoute(req("/api/render?preset=netflix&w=64&h=64&imgs=/noik1.jpg"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+    fetchSpy.mockRestore();
+  });
+
+  it("US3 (T020): still renders (200, valid PNG) when the resolved ImageKit credential/CDN is unreachable or rejects", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url = new URL(typeof input === "string" ? input : (input as URL).toString());
+      if (url.hostname === "api.imagekit.io" || url.hostname === "upload.imagekit.io") {
+        return new Response("unauthorized", { status: 401 });
+      }
+      return new Response(TINY_PNG, { status: 200, headers: { "content-type": "image/png" } });
+    });
+
+    const res = await renderRoute(
+      req("/api/render?preset=netflix&w=64&h=64&imgs=/noik2.jpg&imagekit_key=not-a-real-key")
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+    const body = Buffer.from(await res.arrayBuffer());
+    expect(body.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    fetchSpy.mockRestore();
+  });
+});

@@ -160,8 +160,9 @@ GET /api/render?preset=netflix&w=1920&h=1080&cols=8&imgs=/path1,/path2,/path3
 - `catalog` - URL to Stremio/Nuvio catalog (alternative to `imgs`)
 - `limit` - max catalog items to render
 - `key` - `ACCESS_KEY` if protected
-- `token` - profile token from [User Profiles](#user-profiles): uses that profile's personal TMDB key instead of the shared server key, if one is registered
+- `token` - profile token from [User Profiles](#user-profiles): uses that profile's personal TMDB and/or ImageKit key instead of the shared server key, if registered
 - `tmdb_key` - a raw personal TMDB key, used directly (secondary alternative to `token` — see below)
+- `imagekit_key` - a raw personal ImageKit key, used directly (secondary alternative to `token` — see [CDN render caching](#cdn-render-caching) below)
 
 **Example:**
 
@@ -175,7 +176,7 @@ GET /api/render?preset=netflix&w=1920&h=1080&cols=8&imgs=/path1,/path2,/path3
 GET /api/cover?w=1000&h=1500&type=poster&img=/path&logo=https://logo.png&text=Genre
 ```
 
-**Parameters:** width, height, poster/backdrop, background image, logo URL, text overlay, text styling. Also accepts `key`, `token`, and `tmdb_key` as above.
+**Parameters:** width, height, poster/backdrop, background image, logo URL, text overlay, text styling. Also accepts `key`, `token`, `tmdb_key`, and `imagekit_key` as above.
 
 ### Bring your own TMDB key
 
@@ -193,6 +194,34 @@ If both are supplied, `tmdb_key` wins. If neither resolves to a usable credentia
 unknown/unregistered `token`), the request falls back to the server's `TMDB_API_KEY` unchanged —
 supplying a personal key is always optional. A credential that TMDB itself rejects (invalid,
 expired) returns a clear error instead of silently falling back to the server key.
+
+### CDN render caching
+
+`/api/render` and `/api/cover` normally re-render the PNG on every request. If you supply your
+own [ImageKit](https://imagekit.io) credential — via `token` (recommended, see
+[User Profiles](#user-profiles)) or a direct `imagekit_key` (secondary, same precedence rule as
+`tmdb_key` above) — repeat requests for an unchanged configuration are served from your own
+ImageKit media library instead of being re-rendered:
+
+- **Cache miss** (first request, or the configuration/catalog content changed): `200` with the
+  PNG body, same as always — the difference is the rendered image is also uploaded to your
+  ImageKit account (under a dedicated `mosaiq-cache/` path) for next time.
+- **Cache hit**: `302 Found` with a `Location` header pointing at your ImageKit delivery URL,
+  instead of a `200` PNG body. Transparent to browsers, `<img>` tags, `curl -L`, and Nuvio; visible
+  only to callers that inspect the raw HTTP status.
+- For `imgs=...` (explicit list) requests, any change to a parameter that affects the rendered
+  output (dimensions, preset, overlays, the image list itself, etc.) produces a distinct cache
+  entry — `key`, `token`, `tmdb_key`, and `imagekit_key` never affect the cache key.
+- For `catalog=...` (dynamic) requests, the catalog's current content is fetched and checked on
+  every request; the cached asset is reused only while that content is unchanged, and is
+  automatically replaced (not left to accumulate) the moment it changes.
+- Caching is entirely optional and has zero effect when unused: with no `token`/`imagekit_key`
+  resolving a credential, behavior is identical to today. Likewise, any problem with your ImageKit
+  account (invalid key, unreachable, quota) never breaks or delays the render itself — you always
+  get a correctly rendered image back; caching for that request is just silently skipped.
+
+See [`specs/002-cdn-render-cache/`](specs/002-cdn-render-cache/) for the full design and API
+contract.
 
 ---
 

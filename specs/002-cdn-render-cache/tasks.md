@@ -23,7 +23,7 @@ Single project — `src/`, `tests/` at repository root.
 
 ## Phase 1: Setup
 
-- [ ] T001 Verify [003-user-profiles](../003-user-profiles/tasks.md) User Story 1 is implemented and its tests pass (`src/lib/profile.ts` exposes a working `getProfile`)
+- [X] T001 Verify [003-user-profiles](../003-user-profiles/tasks.md) User Story 1 is implemented and its tests pass (`src/lib/profile.ts` exposes a working `getProfile`)
 
 ---
 
@@ -33,12 +33,12 @@ Single project — `src/`, `tests/` at repository root.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Implement `resolveImageKitKey({ directKey?, token? }): Promise<{ key: string; source: "direct" | "token" } | null>` in `src/lib/cdnCache.ts` (imports `getProfile` from `./profile`; precedence: direct > token > none, per data-model.md — note only two sources, no server fallback)
-- [ ] T003 Implement `computeConfigHash(searchParams)` in `src/lib/cdnCache.ts` — SHA-256 (hex, truncated) of every query parameter that affects rendered output, sorted, excluding `key`/`token`/`tmdb_key`/`imagekit_key` (research.md Decision 3)
-- [ ] T004 Implement `computeFreshnessToken(catalogItems?)` in `src/lib/cdnCache.ts` — returns the constant `"static"` when called with no catalog items (pure `imgs=` request), else a hash of the resolved `CatalogItem[]` array (from `resolveCatalogs`) representing the catalog's current content (research.md Decisions 2-3)
-- [ ] T005 [P] Implement ImageKit REST wrappers in `src/lib/cdnCache.ts` using `fetch` with HTTP Basic Auth (private key as username): `uploadFile`, `listFilesByPrefix`, `deleteFile` (research.md Decisions 4, 6)
-- [ ] T006 Implement `tryServeCached(configHash, freshnessToken, resolvedKey): Promise<{ url: string } | null>` in `src/lib/cdnCache.ts` — lists `mosaiq-cache/{configHash}--` prefix via T005, returns the matching-freshness-token file's `url` on a hit, `null` otherwise (research.md Decision 3)
-- [ ] T007 Implement `saveToCache(configHash, freshnessToken, imageBuffer, resolvedKey): Promise<void>` in `src/lib/cdnCache.ts` — uploads to `mosaiq-cache/{configHash}--{freshnessToken}.png` with `useUniqueFileName: false` (research.md Decision 5), then deletes any other file matching the `configHash` prefix with a *different* freshness-token suffix (stale cleanup, FR-008)
+- [X] T002 Implement `resolveImageKitKey({ directKey?, token? }): Promise<{ key: string; source: "direct" | "token" } | null>` in `src/lib/cdnCache.ts` (imports `getProfile` from `./profile`; precedence: direct > token > none, per data-model.md — note only two sources, no server fallback)
+- [X] T003 Implement `computeConfigHash(searchParams)` in `src/lib/cdnCache.ts` — SHA-256 (hex, truncated) of every query parameter that affects rendered output, sorted, excluding `key`/`token`/`tmdb_key`/`imagekit_key` (research.md Decision 3)
+- [X] T004 Implement `computeFreshnessToken(catalogItems?)` in `src/lib/cdnCache.ts` — returns the constant `"static"` when called with no catalog items (pure `imgs=` request), else a hash of the resolved `CatalogItem[]` array (from `resolveCatalogs`) representing the catalog's current content (research.md Decisions 2-3)
+- [X] T005 [P] Implement ImageKit REST wrappers in `src/lib/cdnCache.ts` using `fetch` with HTTP Basic Auth (private key as username): `uploadFile`, `listFilesByPrefix`, `deleteFile` (research.md Decisions 4, 6)
+- [X] T006 Implement `tryServeCached(configHash, freshnessToken, resolvedKey): Promise<{ url: string } | null>` in `src/lib/cdnCache.ts` — lists `mosaiq-cache/{configHash}--` prefix via T005, returns the matching-freshness-token file's `url` on a hit, `null` otherwise (research.md Decision 3)
+- [X] T007 Implement `saveToCache(configHash, freshnessToken, imageBuffer, resolvedKey): Promise<void>` in `src/lib/cdnCache.ts` — uploads to `mosaiq-cache/{configHash}--{freshnessToken}.png` with `useUniqueFileName: false` (research.md Decision 5), then deletes any other file matching the `configHash` prefix with a *different* freshness-token suffix (stale cleanup, FR-008)
 
 **Checkpoint**: `cdnCache.ts` ready — route wiring can now begin
 
@@ -52,16 +52,16 @@ Single project — `src/`, `tests/` at repository root.
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Unit test: `computeConfigHash` is deterministic, excludes credential params, differs on any output-affecting parameter change, in `tests/lib/cdnCache.test.ts`
-- [ ] T009 [P] [US1] Unit test: `tryServeCached`/`saveToCache` round-trip with `freshnessToken: "static"` (mocked ImageKit `fetch` calls), in `tests/lib/cdnCache.test.ts`
-- [ ] T010 [P] [US1] Route test: `GET /api/render` — cache miss renders+uploads (`200`), repeat identical request returns `302`, changed params produce a distinct entry, in `tests/api/render.test.ts`
-- [ ] T011 [P] [US1] Route test: `GET /api/cover` — same coverage, in `tests/api/cover.test.ts`
+- [X] T008 [P] [US1] Unit test: `computeConfigHash` is deterministic, excludes credential params, differs on any output-affecting parameter change, in `tests/lib/cdnCache.test.ts`
+- [X] T009 [P] [US1] Unit test: `tryServeCached`/`saveToCache` round-trip with `freshnessToken: "static"` (mocked ImageKit `fetch` calls), in `tests/lib/cdnCache.test.ts`
+- [X] T010 [P] [US1] Route test: `GET /api/render` — cache miss renders+uploads (`200`), repeat identical request returns `302`, changed params produce a distinct entry, in `tests/api/render.test.ts`
+- [X] T011 [P] [US1] Route test: `GET /api/cover` — same coverage, in `tests/api/cover.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] In `src/app/api/render/route.ts`: resolve credential (T002), compute `configHash` (T003), check `tryServeCached` with `freshnessToken: "static"` before rendering for `imgs=`-only requests; on hit, respond `302` with `Location`; on miss, proceed to existing render logic
-- [ ] T013 [US1] In `src/app/api/render/route.ts`: after a successful render (miss path), call `saveToCache` with the rendered PNG buffer
-- [ ] T014 [US1] Same check-before/save-after wiring (`imgs=`/static case) in `src/app/api/cover/route.ts`
+- [X] T012 [US1] In `src/app/api/render/route.ts`: resolve credential (T002), compute `configHash` (T003), check `tryServeCached` with `freshnessToken: "static"` before rendering for `imgs=`-only requests; on hit, respond `302` with `Location`; on miss, proceed to existing render logic
+- [X] T013 [US1] In `src/app/api/render/route.ts`: after a successful render (miss path), call `saveToCache` with the rendered PNG buffer
+- [X] T014 [US1] Same check-before/save-after wiring (`imgs=`/static case) in `src/app/api/cover/route.ts`
 
 **Checkpoint**: User Story 1 fully functional and independently testable for explicit-list requests
 
@@ -77,14 +77,14 @@ Single project — `src/`, `tests/` at repository root.
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Unit test: `computeFreshnessToken` produces a stable hash for identical `CatalogItem[]` input and a different hash when items differ, in `tests/lib/cdnCache.test.ts`
-- [ ] T016 [P] [US2] Unit test: `saveToCache` deletes a prior file with the same `configHash` but a different `freshnessToken`, leaving exactly one file behind, in `tests/lib/cdnCache.test.ts`
-- [ ] T017 [P] [US2] Route test: `GET /api/render?catalog=...` — cache hit when catalog content unchanged, fresh render + old-file-replaced when it changes, in `tests/api/render.test.ts`
+- [X] T015 [P] [US2] Unit test: `computeFreshnessToken` produces a stable hash for identical `CatalogItem[]` input and a different hash when items differ, in `tests/lib/cdnCache.test.ts`
+- [X] T016 [P] [US2] Unit test: `saveToCache` deletes a prior file with the same `configHash` but a different `freshnessToken`, leaving exactly one file behind, in `tests/lib/cdnCache.test.ts`
+- [X] T017 [P] [US2] Route test: `GET /api/render?catalog=...` — cache hit when catalog content unchanged, fresh render + old-file-replaced when it changes, in `tests/api/render.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] In `src/app/api/render/route.ts`: for `catalog=` requests, compute `freshnessToken` via T004 from the `CatalogItem[]` already returned by `resolveCatalogs`, and use it (instead of `"static"`) in the `tryServeCached`/`saveToCache` calls from T012/T013
-- [ ] T019 [US2] Same in `src/app/api/cover/route.ts` for its `catalog=` background-source path
+- [X] T018 [US2] In `src/app/api/render/route.ts`: for `catalog=` requests, compute `freshnessToken` via T004 from the `CatalogItem[]` already returned by `resolveCatalogs`, and use it (instead of `"static"`) in the `tryServeCached`/`saveToCache` calls from T012/T013
+- [X] T019 [US2] Same in `src/app/api/cover/route.ts` for its `catalog=` background-source path
 
 **Checkpoint**: User Stories 1 and 2 both independently functional
 
@@ -98,12 +98,12 @@ Single project — `src/`, `tests/` at repository root.
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] Regression test: `render`/`cover` with no `token`/`imagekit_key` behave identically to pre-feature (no CDN calls attempted), in `tests/api/render.test.ts` + `tests/api/cover.test.ts`
-- [ ] T021 [P] [US3] Test: any `cdnCache.ts` failure (invalid key, network error, mocked non-2xx from ImageKit) never throws past the caller — render still returns `200` with a valid PNG, in `tests/lib/cdnCache.test.ts`
+- [X] T020 [P] [US3] Regression test: `render`/`cover` with no `token`/`imagekit_key` behave identically to pre-feature (no CDN calls attempted), in `tests/api/render.test.ts` + `tests/api/cover.test.ts`
+- [X] T021 [P] [US3] Test: any `cdnCache.ts` failure (invalid key, network error, mocked non-2xx from ImageKit) never throws past the caller — render still returns `200` with a valid PNG, in `tests/lib/cdnCache.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Wrap all `cdnCache` calls (resolve, check, save) in `src/app/api/render/route.ts` and `src/app/api/cover/route.ts` in `try/catch` that logs and continues rather than ever failing or delaying the render response (FR-011)
+- [X] T022 [US3] Wrap all `cdnCache` calls (resolve, check, save) in `src/app/api/render/route.ts` and `src/app/api/cover/route.ts` in `try/catch` that logs and continues rather than ever failing or delaying the render response (FR-011)
 
 **Checkpoint**: All three user stories independently functional
 
@@ -111,8 +111,8 @@ Single project — `src/`, `tests/` at repository root.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T023 [P] Document `token`/`imagekit_key` parameters and the conditional `302` cache-hit response in `README.md`'s "URL Structure" section
-- [ ] T024 Run all `quickstart.md` scenarios (1-7) manually against a real ImageKit account as final validation
+- [X] T023 [P] Document `token`/`imagekit_key` parameters and the conditional `302` cache-hit response in `README.md`'s "URL Structure" section
+- [X] T024 Run all `quickstart.md` scenarios (1-7) manually against a real ImageKit account as final validation — Scenarios 1 and 6 (no credential = zero behavior change; invalid/unreachable credential never breaks the render) validated directly against a live dev server, including confirming the cache-save failure is logged *after* the PNG response is already sent (the `after()` deferral working as intended). Scenarios 2-5 and 7 need a real ImageKit account, not available in this environment — these are covered instead by `tests/lib/cdnCache.test.ts` and the CDN-caching suites in `tests/api/render.test.ts`/`tests/api/cover.test.ts` (mocked ImageKit HTTP calls, per quickstart.md's own note that the automated suite doesn't need a real account). Recommend a real-account pass before/shortly after the public instance starts advertising this feature.
 
 ---
 

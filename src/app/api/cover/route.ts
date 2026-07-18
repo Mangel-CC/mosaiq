@@ -1,9 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
 import { coverConfigFromParams, renderCover } from "@/lib/cover";
-import { resolveCatalogs } from "@/lib/catalog";
+import { resolveCatalogs, CatalogItem } from "@/lib/catalog";
 import { fetchTextlessArt, resolveTmdbRef } from "@/lib/tmdb";
 import { registerServerFonts } from "@/lib/serverFonts";
+import {
+  computeConfigHash,
+  computeFreshnessToken,
+  resolveImageKitKey,
+  ResolvedImageKitKey,
+  saveToCache,
+  tryServeCached,
+} from "@/lib/cdnCache";
 
 // Registra las fuentes empaquetadas al cargar el módulo del route
 registerServerFonts();
@@ -58,6 +66,11 @@ export async function GET(req: NextRequest) {
   };
 
   let bgUrl: string | null = null;
+  // Items del catálogo resueltos en la rama ?catalog= (specs/002-cdn-render-cache):
+  // solo se llenan cuando esa rama realmente se usó como fuente del fondo —
+  // no basta con que ?catalog= venga en la query si ?img= ganó la precedencia.
+  let catalogItems: CatalogItem[] = [];
+  let hasCatalog = false;
   try {
     const catalogs = params.getAll("catalog").filter(Boolean);
     const img = params.get("img");
@@ -68,8 +81,9 @@ export async function GET(req: NextRequest) {
       bgUrl = chosen.startsWith("/") ? tmdbImageUrl(chosen, type) : chosen;
     } else if (catalogs.length > 0) {
       const pick = Math.max(1, Number(params.get("pick")) || 1);
-      const items = await resolveCatalogs(catalogs, pick + 5, [], keyInput);
-      const item = items[pick - 1];
+      catalogItems = await resolveCatalogs(catalogs, pick + 5, [], keyInput);
+      hasCatalog = true;
+      const item = catalogItems[pick - 1];
       if (!item) throw new Error(`El catálogo no tiene ${pick} títulos`);
       let path =
         type === "backdrop"
@@ -93,6 +107,30 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // ---- Caché de renders vía CDN propio (specs/002-cdn-render-cache) ----
+  // Mismo mecanismo que /api/render: cualquier fallo de esta capa se traga
+  // aquí mismo, nunca debe romper ni bloquear la respuesta de la portada
+  // (FR-011).
+  let cdnKey: ResolvedImageKitKey | null = null;
+  let cacheConfigHash: string | null = null;
+  let cacheFreshnessToken: string | null = null;
+  try {
+    cdnKey = await resolveImageKitKey({
+      directKey: params.get("imagekit_key") ?? undefined,
+      token: params.get("token") ?? undefined,
+    });
+    if (cdnKey) {
+      cacheConfigHash = computeConfigHash(params);
+      cacheFreshnessToken = computeFreshnessToken(hasCatalog ? catalogItems : undefined);
+      const hit = await tryServeCached(cacheConfigHash, cacheFreshnessToken, cdnKey);
+      if (hit) {
+        return NextResponse.redirect(hit.url, 302);
+      }
+    }
+  } catch (err) {
+    console.error("[cdnCache] Fallo comprobando caché de /api/cover:", err);
+  }
+
   try {
     const bg = await fetchImage(bgUrl);
     const logoUrl = params.get("logo");
@@ -108,6 +146,32 @@ export async function GET(req: NextRequest) {
     );
 
     const png = canvas.toBuffer("image/png");
+
+    if (cdnKey && cacheConfigHash && cacheFreshnessToken) {
+      // after(): responde ya mismo con el PNG y garantiza (Vercel y
+      // self-hosted) que la subida a ImageKit se complete en segundo plano,
+      // sin sumar su latencia a esta respuesta.
+      const key = cdnKey;
+      const configHash = cacheConfigHash;
+      const freshnessToken = cacheFreshnessToken;
+      const saveTask = async () => {
+        try {
+          await saveToCache(configHash, freshnessToken, png, key);
+        } catch (err) {
+          console.error("[cdnCache] Fallo guardando en caché desde /api/cover:", err);
+        }
+      };
+      try {
+        after(saveTask);
+      } catch {
+        // after() requiere el contexto de request de Next.js
+        // (AsyncLocalStorage), ausente al invocar el handler directamente
+        // como hacen los tests de este repo (tests/api/*.test.ts). Fuera de
+        // ese caso puntual, se completa de forma síncrona en vez de perderse.
+        await saveTask();
+      }
+    }
+
     return new NextResponse(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
