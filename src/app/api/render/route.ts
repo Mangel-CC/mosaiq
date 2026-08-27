@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
 import { configFromParams, renderMosaic } from "@/lib/mosaic";
 import { resolveCatalogs, CatalogItem } from "@/lib/catalog";
+import { resolveCreationParams } from "@/lib/profile";
 import {
   computeConfigHash,
   computeFreshnessToken,
@@ -38,7 +39,17 @@ function urlsFromCatalogItems(
 }
 
 export async function GET(req: NextRequest) {
-  const params = req.nextUrl.searchParams;
+  // ?creation=<id> (+ ?token=): URL corta guardada desde el Editor -- se
+  // resuelve a los parámetros reales ANTES de leer nada más (ver
+  // resolveCreationParams).
+  const resolvedCreation = await resolveCreationParams(req.nextUrl.searchParams);
+  if (resolvedCreation.error) {
+    return NextResponse.json(
+      { error: resolvedCreation.error.message },
+      { status: resolvedCreation.error.status }
+    );
+  }
+  const params = resolvedCreation.params;
   const cfg = configFromParams(params);
   // Credencial TMDB personal opcional (specs/001-tmdb-byo-key): ?token= o
   // ?tmdb_key=, en vez de la key compartida del servidor.

@@ -327,3 +327,37 @@ export async function getCreation(id: string, token: string): Promise<CreationDe
     updatedAt: Number(row.updated_at),
   };
 }
+
+export interface CreationParamsError {
+  message: string;
+  status: 400 | 404;
+}
+
+/**
+ * Resuelve `?token=&creation=<id>` (la "URL corta y estable" que arma
+ * getCreationUrl() en el Editor) a los parámetros reales guardados para esa
+ * creación. Usada por /api/render y /api/cover: sin esto, esa URL corta
+ * nunca resolvía nada -- devolvía siempre 400 "Sin imágenes"/"Sin fondo"
+ * porque ninguno de los dos endpoints leía `creation` (confirmado en vivo,
+ * 2026-08-27: la URL copiada por el botón de "creaciones" siempre daba 400).
+ * `token` se reinyecta en el resultado para que resolveTmdbKey/
+ * resolveImageKitKey (que también leen `token` de los params) sigan
+ * funcionando igual que si el caller hubiera mandado los parámetros a mano.
+ * Sin `?creation=`, devuelve `params` tal cual (no-op).
+ */
+export async function resolveCreationParams(
+  params: URLSearchParams
+): Promise<{ params: URLSearchParams; error?: undefined } | { params?: undefined; error: CreationParamsError }> {
+  const creationId = params.get("creation");
+  if (!creationId) return { params };
+  const token = params.get("token");
+  if (!token) return { error: { message: "Falta token", status: 400 } };
+  const creation = await getCreation(creationId, token);
+  if (!creation) return { error: { message: "Creation not found", status: 404 } };
+  const resolved = new URLSearchParams();
+  for (const [k, v] of Object.entries(creation.config)) {
+    if (typeof v === "string") resolved.append(k, v);
+  }
+  resolved.set("token", token);
+  return { params: resolved };
+}

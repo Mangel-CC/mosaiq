@@ -4,6 +4,7 @@ import { coverConfigFromParams, renderCover } from "@/lib/cover";
 import { resolveCatalogs, CatalogItem } from "@/lib/catalog";
 import { fetchTextlessArt, resolveTmdbRef } from "@/lib/tmdb";
 import { registerServerFonts } from "@/lib/serverFonts";
+import { resolveCreationParams } from "@/lib/profile";
 import {
   computeConfigHash,
   computeFreshnessToken,
@@ -36,7 +37,17 @@ async function fetchImage(url: string): Promise<Image> {
 }
 
 export async function GET(req: NextRequest) {
-  const params = req.nextUrl.searchParams;
+  // ?creation=<id> (+ ?token=): URL corta guardada desde el Editor -- se
+  // resuelve a los parámetros reales ANTES de leer nada más (ver
+  // resolveCreationParams).
+  const resolvedCreation = await resolveCreationParams(req.nextUrl.searchParams);
+  if (resolvedCreation.error) {
+    return NextResponse.json(
+      { error: resolvedCreation.error.message },
+      { status: resolvedCreation.error.status }
+    );
+  }
+  const params = resolvedCreation.params;
   const cfg = coverConfigFromParams(params);
   const type = params.get("type") === "backdrop" ? "backdrop" : "poster";
   // Credencial TMDB personal opcional (specs/001-tmdb-byo-key): ?token= o
