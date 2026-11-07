@@ -45,12 +45,19 @@ async function ensureSchema(): Promise<void> {
       await db.execute(
         `CREATE INDEX IF NOT EXISTS idx_creations_profile_token ON creations(profile_token)`
       );
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS short_links (
+          id TEXT PRIMARY KEY,
+          target TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        )
+      `);
     })();
   }
   return schemaReady;
 }
 
-async function db(): Promise<Client> {
+export async function db(): Promise<Client> {
   await ensureSchema();
   return getClient();
 }
