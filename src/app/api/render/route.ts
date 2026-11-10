@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { createCanvas, loadImage, Image } from "@napi-rs/canvas";
+import { encodeOutput, imagekitOutputUrl, outputSpec } from "@/lib/outputImage";
 import { configFromParams, renderMosaic } from "@/lib/mosaic";
 import { resolveCatalogs, CatalogItem } from "@/lib/catalog";
 import { resolveCreationParams } from "@/lib/profile";
@@ -130,7 +131,7 @@ export async function GET(req: NextRequest) {
       cacheFreshnessToken = computeFreshnessToken(hasCatalog ? catalogItems : undefined);
       const hit = await tryServeCached(cacheConfigHash, cacheFreshnessToken, cdnKey);
       if (hit) {
-        return NextResponse.redirect(hit.url, 302);
+        return NextResponse.redirect(imagekitOutputUrl(hit.url, outputSpec(params)), 302);
       }
     }
   } catch (err) {
@@ -190,9 +191,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return new NextResponse(new Uint8Array(png), {
+  const out = await encodeOutput(png, outputSpec(params));
+  return new NextResponse(new Uint8Array(out.body), {
     headers: {
-      "Content-Type": "image/png",
+      "Content-Type": out.type,
       // Cache corto en CDN para que los catálogos se refresquen pronto
       "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
     },

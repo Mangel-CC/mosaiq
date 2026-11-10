@@ -13,6 +13,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const target = await getShortLink(id);
   if (!target) return NextResponse.json({ error: "Link not found" }, { status: 404 });
   const url = new URL(target, req.nextUrl.origin);
+  // Tamano/formato de salida del propio link corto (?ow=640&ofmt=jpeg), ver lib/outputImage.
+  for (const k of ["ow", "ofmt"]) {
+    const v = req.nextUrl.searchParams.get(k);
+    if (v) url.searchParams.set(k, v);
+  }
   const inner = new NextRequest(url, { headers: req.headers });
   return url.pathname === "/api/cover" ? coverGET(inner) : renderGET(inner);
 }

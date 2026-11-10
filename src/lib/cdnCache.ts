@@ -60,6 +60,8 @@ export async function resolveImageKitKey(
 // ---- Cache key (research.md Decision 3) ----
 
 const CREDENTIAL_PARAMS = new Set(["key", "token", "tmdb_key", "imagekit_key"]);
+// Tamano/formato de salida: no cambian lo que se renderiza ni lo que se guarda en cache.
+const OUTPUT_ONLY_PARAMS = new Set(["ow", "ofmt"]);
 
 /**
  * SHA-256 (hex, truncado a 16 chars) de todos los parámetros de query que
@@ -70,7 +72,7 @@ const CREDENTIAL_PARAMS = new Set(["key", "token", "tmdb_key", "imagekit_key"]);
 export function computeConfigHash(searchParams: URLSearchParams): string {
   const entries: string[] = [];
   for (const [k, v] of searchParams.entries()) {
-    if (CREDENTIAL_PARAMS.has(k)) continue;
+    if (CREDENTIAL_PARAMS.has(k) || OUTPUT_ONLY_PARAMS.has(k)) continue;
     entries.push(`${k}=${v}`);
   }
   entries.sort();
